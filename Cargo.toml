@@ -1,0 +1,47 @@
+[package]
+name = "valorant-manager"
+version = "0.1.0"
+edition = "2021"
+authors = ["Valorant Manager Team"]
+description = "A strategic esports management simulation game for Valorant"
+license = "MIT"
+repository = "https://github.com/your-username/valorant-manager"
+
+[dependencies]
+# GUI Framework
+egui = "0.28"
+eframe = { version = "0.28", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "persistence",
+] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Random number generation
+rand = "0.8"
+
+# Date/Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# UUID generation for unique IDs
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# Collections and utilities
+indexmap = { version = "2.0", features = ["serde"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true 
