@@ -37,7 +37,7 @@ impl GameState {
         Self {
             current_team: None,
             current_season: 2025,
-            budget: 1_000_000, // Starting budget of $1M
+            budget: 5_000_000, // Starting budget of $5M - increased for better player affordability
             current_date: Utc::now(),
             tournament_state: TournamentState::new(),
             all_players: Vec::new(),

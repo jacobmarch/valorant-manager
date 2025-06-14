@@ -27,8 +27,11 @@ impl ScoutingScreen {
 
             if let Some(_team) = &game_state.current_team {
                 ui.horizontal(|ui| {
-                    // Left panel - Scouting actions
-                    ui.vertical(|ui| {
+                    // Left panel - Scouting actions (fixed width)
+                    ui.allocate_ui_with_layout(
+                        egui::Vec2::new(400.0, ui.available_height()),
+                        egui::Layout::top_down(egui::Align::LEFT),
+                        |ui| {
                         ui.heading("Scouting Operations");
 
                         ui.horizontal(|ui| {
@@ -38,39 +41,120 @@ impl ScoutingScreen {
 
                         ui.add_space(10.0);
 
-                        if ui.button("Scout New Players").clicked() && self.scouting_budget >= 10_000 {
+                        let scout_button_text = if self.scouted_players.is_empty() {
+                            "Scout New Players"
+                        } else {
+                            "Scout Fresh Players"
+                        };
+                        
+                        if ui.button(scout_button_text).clicked() && self.scouting_budget >= 10_000 {
                             scout_new_players = true;
                         }
-                        ui.label("Cost: $10,000");
+                        ui.label("Cost: $10,000 (refreshes player list)");
 
                         ui.add_space(20.0);
-                        ui.heading("Available Players");
+                        ui.horizontal(|ui| {
+                            ui.heading("Available Players");
+                            if !self.scouted_players.is_empty() {
+                                ui.label(format!("({} found)", self.scouted_players.len()));
+                            }
+                        });
 
                         if self.scouted_players.is_empty() {
                             ui.label("No players scouted yet. Click 'Scout New Players' to discover talent.");
                         } else {
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                for player in &self.scouted_players {
-                                    let is_selected = self.selected_player_id == Some(player.id);
-                                    let selectable_id = format!("scouted_player_{}", player.id);
+                            // Show all scouted players without scrolling - similar to squad screen
+                            for &player_id in &self.scouted_players.iter().map(|p| p.id).collect::<Vec<_>>() {
+                                if let Some(player) = self.scouted_players.iter().find(|p| p.id == player_id) {
+                                    let is_selected = self.selected_player_id == Some(player_id);
 
-                                    if ui.selectable_label(is_selected, &player.name).clicked() {
-                                        self.selected_player_id = Some(player.id);
+                                    // Create the content area with non-selectable text first to get actual size
+                                    let content_response = ui.allocate_ui_with_layout(
+                                        [ui.available_width(), 0.0].into(),
+                                        egui::Layout::top_down(egui::Align::LEFT),
+                                        |ui| {
+                                            ui.vertical(|ui| {
+                                                ui.add_space(3.0);
+                                                ui.add(egui::Label::new(egui::RichText::new(&player.name)
+                                                    .monospace()
+                                                    .strong()).selectable(false));
+                                                
+                                                ui.horizontal(|ui| {
+                                                    ui.add(egui::Label::new(format!("Role: {:?}", player.preferred_role)).selectable(false));
+                                                    ui.add(egui::Label::new(format!(
+                                                        "Overall: {}",
+                                                        player.attributes.overall_rating()
+                                                    )).selectable(false));
+                                                    ui.add(egui::Label::new(format!("Age: {}", player.age)).selectable(false));
+                                                });
+
+                                                ui.horizontal(|ui| {
+                                                    ui.add(egui::Label::new(format!("Value: ${}", player.market_value)).selectable(false));
+                                                    ui.add(egui::Label::new(format!("Salary: ${}/year", player.contract_salary)).selectable(false));
+                                                });
+
+                                                ui.horizontal(|ui| {
+                                                    let can_afford = game_state.budget >= player.market_value;
+                                                    let button_text = if can_afford {
+                                                        format!("Sign for ${}", player.market_value)
+                                                    } else {
+                                                        "Can't Afford".to_string()
+                                                    };
+                                                    
+                                                    ui.add_enabled_ui(can_afford, |ui| {
+                                                        if ui.small_button(button_text).clicked() {
+                                                            sign_player_id = Some(player_id);
+                                                        }
+                                                    });
+                                                });
+                                                ui.add_space(3.0);
+                                            });
+                                        }
+                                    );
+
+                                    // Create a full-width selection rectangle
+                                    let full_width_rect = egui::Rect::from_min_size(
+                                        egui::Pos2::new(content_response.response.rect.min.x - 5.0, content_response.response.rect.min.y),
+                                        egui::Vec2::new(ui.available_width() + 10.0, content_response.response.rect.height())
+                                    );
+
+                                    // Draw selection highlighting over the full width
+                                    if is_selected {
+                                        // Use a more transparent selection color or border instead of solid fill
+                                        let mut selection_color = ui.style().visuals.selection.bg_fill;
+                                        selection_color = egui::Color32::from_rgba_unmultiplied(
+                                            selection_color.r(),
+                                            selection_color.g(), 
+                                            selection_color.b(),
+                                            60 // Much more transparent
+                                        );
+                                        ui.painter().rect_filled(
+                                            full_width_rect,
+                                            egui::Rounding::same(4.0),
+                                            selection_color
+                                        );
+                                        // Add a border for better visibility
+                                        ui.painter().rect_stroke(
+                                            full_width_rect,
+                                            egui::Rounding::same(4.0),
+                                            egui::Stroke::new(2.0, ui.style().visuals.selection.bg_fill)
+                                        );
                                     }
 
-                                    ui.horizontal(|ui| {
-                                        ui.label(format!("Role: {:?}", player.preferred_role));
-                                        ui.label(format!("Overall: {}", player.attributes.overall_rating()));
-                                        ui.label(format!("Value: ${}", player.market_value));
-                                    });
+                                    // Create a clickable overlay that covers the full width area
+                                    let click_response = ui.interact(
+                                        full_width_rect,
+                                        egui::Id::new(format!("scouted_click_{}", player_id)),
+                                        egui::Sense::click()
+                                    );
 
-                                    if ui.button("Sign Player").clicked() 
-                                        && game_state.budget >= player.market_value {
-                                        sign_player_id = Some(player.id);
+                                    if click_response.clicked() {
+                                        self.selected_player_id = Some(player_id);
                                     }
+
                                     ui.separator();
                                 }
-                            });
+                            }
                         }
 
                         ui.add_space(20.0);
@@ -85,8 +169,11 @@ impl ScoutingScreen {
 
                     ui.separator();
 
-                    // Right panel - Player details
-                    ui.vertical(|ui| {
+                    // Right panel - Player details (fill remaining space)
+                    ui.allocate_ui_with_layout(
+                        egui::Vec2::new(ui.available_width(), ui.available_height()),
+                        egui::Layout::top_down(egui::Align::LEFT),
+                        |ui| {
                         if let Some(player_id) = self.selected_player_id {
                             if let Some(player) = self.scouted_players.iter().find(|p| p.id == player_id) {
                                 ui.heading(&player.name);
@@ -182,12 +269,17 @@ impl ScoutingScreen {
     fn scout_new_players(&mut self) {
         if self.scouting_budget >= 10_000 {
             self.scouting_budget -= 10_000;
+            
+            // Clear the existing list to refresh with new players
+            self.scouted_players.clear();
+            self.selected_player_id = None; // Clear selection since list is refreshed
+            
             let mut rng = rand::thread_rng();
-            let num_players = rng.gen_range(3..=5);
+            let num_players = rng.gen_range(3..=5); // Generate 3-5 players
             for i in 0..num_players {
                 let player = Player::generate_random(format!(
                     "Scout{}{}",
-                    self.scouted_players.len() + i + 1,
+                    i + 1,
                     rng.gen_range(100..999)
                 ));
                 self.scouted_players.push(player);

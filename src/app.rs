@@ -33,11 +33,15 @@ impl ValorantManagerApp {
         info!("Initializing Valorant Manager App");
         
         // Load persistent data if available
-        let game_state = if let Some(storage) = cc.storage {
-            eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
-        } else {
-            GameState::new()
-        };
+        // Temporarily force new game state to get updated budget
+        let game_state = GameState::new();
+        
+        // TODO: Restore persistence after budget testing
+        // let game_state = if let Some(storage) = cc.storage {
+        //     eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
+        // } else {
+        //     GameState::new()
+        // };
 
         Self {
             current_screen: Screen::MainMenu,
