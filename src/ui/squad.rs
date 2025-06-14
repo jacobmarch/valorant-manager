@@ -29,27 +29,15 @@ impl SquadScreen {
                         egui::Layout::top_down(egui::Align::LEFT),
                         |ui| {
                         
-                        // Calculate space for starters (no scrolling, show all players)
-                        let starter_count = team.starting_lineup.len();
-                        let starter_item_height = 60.0; // Approximate height per player item
-                        let starters_needed_height = if self.starters_collapsed { 
-                            0.0 
-                        } else { 
-                            starter_count as f32 * starter_item_height + 20.0 // Extra padding
-                        };
-                        
-                        // Remaining height goes to bench
-                        let available_height = ui.available_height() - 80.0; // Reserve space for headers and spacing
-                        let bench_height = if self.bench_collapsed {
-                            0.0
-                        } else {
-                            (available_height - starters_needed_height - 60.0).max(200.0) // 60.0 for button spacing
-                        };
+                        // Both sections now show all players without scrolling
 
                         // Starting Lineup Section
                         ui.horizontal(|ui| {
-                            let triangle = if self.starters_collapsed { "▶" } else { "▼" };
-                            if ui.button(format!("{} Starting Lineup", triangle)).clicked() {
+                            let chevron = if self.starters_collapsed { "⏵" } else { "⏷" };
+                            if ui.add_sized(
+                                [ui.available_width(), 30.0],
+                                egui::Button::new(format!("{} Starting Lineup", chevron))
+                            ).clicked() {
                                 self.starters_collapsed = !self.starters_collapsed;
                             }
                         });
@@ -60,26 +48,69 @@ impl SquadScreen {
                                 if let Some(player) = game_state.get_player_by_id(player_id) {
                                     let is_selected = self.selected_player_id == Some(player_id);
 
-                                    if ui
-                                        .selectable_label(
-                                            is_selected,
-                                            egui::RichText::new(&player.name)
-                                                .monospace()
-                                                .strong(),
-                                        )
-                                        .clicked()
-                                    {
-                                        self.selected_player_id = Some(player_id);
+                                    // Create the content area with non-selectable text first to get actual size
+                                    let content_response = ui.allocate_ui_with_layout(
+                                        [ui.available_width(), 0.0].into(),
+                                        egui::Layout::top_down(egui::Align::LEFT),
+                                        |ui| {
+                                            ui.vertical(|ui| {
+                                                ui.add_space(3.0);
+                                                ui.add(egui::Label::new(egui::RichText::new(&player.name)
+                                                    .monospace()
+                                                    .strong()).selectable(false));
+                                                
+                                                ui.horizontal(|ui| {
+                                                    ui.add(egui::Label::new(format!("Role: {:?}", player.preferred_role)).selectable(false));
+                                                    ui.add(egui::Label::new(format!(
+                                                        "Overall: {}",
+                                                        player.attributes.overall_rating()
+                                                    )).selectable(false));
+                                                    ui.add(egui::Label::new(format!("Morale: {:?}", player.morale)).selectable(false));
+                                                });
+                                                ui.add_space(3.0);
+                                            });
+                                        }
+                                    );
+
+                                    // Create a full-width selection rectangle
+                                    let full_width_rect = egui::Rect::from_min_size(
+                                        egui::Pos2::new(content_response.response.rect.min.x - 5.0, content_response.response.rect.min.y),
+                                        egui::Vec2::new(ui.available_width() + 10.0, content_response.response.rect.height())
+                                    );
+
+                                    // Draw selection highlighting over the full width
+                                    if is_selected {
+                                        // Use a more transparent selection color or border instead of solid fill
+                                        let mut selection_color = ui.style().visuals.selection.bg_fill;
+                                        selection_color = egui::Color32::from_rgba_unmultiplied(
+                                            selection_color.r(),
+                                            selection_color.g(), 
+                                            selection_color.b(),
+                                            60 // Much more transparent
+                                        );
+                                        ui.painter().rect_filled(
+                                            full_width_rect,
+                                            egui::Rounding::same(4.0),
+                                            selection_color
+                                        );
+                                        // Add a border for better visibility
+                                        ui.painter().rect_stroke(
+                                            full_width_rect,
+                                            egui::Rounding::same(4.0),
+                                            egui::Stroke::new(2.0, ui.style().visuals.selection.bg_fill)
+                                        );
                                     }
 
-                                    ui.horizontal(|ui| {
-                                        ui.label(format!("Role: {:?}", player.preferred_role));
-                                        ui.label(format!(
-                                            "Overall: {}",
-                                            player.attributes.overall_rating()
-                                        ));
-                                        ui.label(format!("Morale: {:?}", player.morale));
-                                    });
+                                    // Create a clickable overlay that covers the full width area
+                                    let click_response = ui.interact(
+                                        full_width_rect,
+                                        egui::Id::new(format!("starter_click_{}", player_id)),
+                                        egui::Sense::click()
+                                    );
+
+                                    if click_response.clicked() {
+                                        self.selected_player_id = Some(player_id);
+                                    }
 
                                     ui.separator();
                                 }
@@ -90,46 +121,88 @@ impl SquadScreen {
 
                         // Bench Players Section
                         ui.horizontal(|ui| {
-                            let triangle = if self.bench_collapsed { "▶" } else { "▼" };
-                            if ui.button(format!("{} Bench Players", triangle)).clicked() {
+                            let chevron = if self.bench_collapsed { "⏵" } else { "⏷" };
+                            if ui.add_sized(
+                                [ui.available_width(), 30.0],
+                                egui::Button::new(format!("{} Bench Players", chevron))
+                            ).clicked() {
                                 self.bench_collapsed = !self.bench_collapsed;
                             }
                         });
 
                         if !self.bench_collapsed {
-                            egui::ScrollArea::vertical()
-                                .id_source("bench_players_scroll")
-                                .max_height(bench_height)
-                                .show(ui, |ui| {
-                                    for &player_id in &team.players {
-                                        if !team.starting_lineup.contains(&player_id) {
-                                            if let Some(player) = game_state.get_player_by_id(player_id) {
-                                                let is_selected =
-                                                    self.selected_player_id == Some(player_id);
+                            // Show bench players without scrolling - just display all players
+                            for &player_id in &team.players {
+                                if !team.starting_lineup.contains(&player_id) {
+                                    if let Some(player) = game_state.get_player_by_id(player_id) {
+                                        let is_selected =
+                                            self.selected_player_id == Some(player_id);
 
-                                                if ui
-                                                    .selectable_label(
-                                                        is_selected,
-                                                        &player.name,
-                                                    )
-                                                    .clicked()
-                                                {
-                                                    self.selected_player_id = Some(player_id);
-                                                }
-
-                                                ui.horizontal(|ui| {
-                                                    ui.label(format!("Role: {:?}", player.preferred_role));
-                                                    ui.label(format!(
-                                                        "Overall: {}",
-                                                        player.attributes.overall_rating()
-                                                    ));
+                                        // Create the content area with non-selectable text first to get actual size
+                                        let content_response = ui.allocate_ui_with_layout(
+                                            [ui.available_width(), 0.0].into(),
+                                            egui::Layout::top_down(egui::Align::LEFT),
+                                            |ui| {
+                                                ui.vertical(|ui| {
+                                                    ui.add_space(2.0);
+                                                    ui.add(egui::Label::new(&player.name).selectable(false));
+                                                    
+                                                    ui.horizontal(|ui| {
+                                                        ui.add(egui::Label::new(format!("Role: {:?}", player.preferred_role)).selectable(false));
+                                                        ui.add(egui::Label::new(format!(
+                                                            "Overall: {}",
+                                                            player.attributes.overall_rating()
+                                                        )).selectable(false));
+                                                    });
+                                                    ui.add_space(2.0);
                                                 });
-
-                                                ui.separator();
                                             }
+                                        );
+
+                                        // Create a full-width selection rectangle
+                                        let full_width_rect = egui::Rect::from_min_size(
+                                            egui::Pos2::new(content_response.response.rect.min.x - 5.0, content_response.response.rect.min.y),
+                                            egui::Vec2::new(ui.available_width() + 10.0, content_response.response.rect.height())
+                                        );
+
+                                        // Draw selection highlighting over the full width
+                                        if is_selected {
+                                            // Use a more transparent selection color or border instead of solid fill
+                                            let mut selection_color = ui.style().visuals.selection.bg_fill;
+                                            selection_color = egui::Color32::from_rgba_unmultiplied(
+                                                selection_color.r(),
+                                                selection_color.g(), 
+                                                selection_color.b(),
+                                                60 // Much more transparent
+                                            );
+                                            ui.painter().rect_filled(
+                                                full_width_rect,
+                                                egui::Rounding::same(4.0),
+                                                selection_color
+                                            );
+                                            // Add a border for better visibility
+                                            ui.painter().rect_stroke(
+                                                full_width_rect,
+                                                egui::Rounding::same(4.0),
+                                                egui::Stroke::new(2.0, ui.style().visuals.selection.bg_fill)
+                                            );
                                         }
+
+                                        // Create a clickable overlay that covers the full width area
+                                        let click_response = ui.interact(
+                                            full_width_rect,
+                                            egui::Id::new(format!("bench_click_{}", player_id)),
+                                            egui::Sense::click()
+                                        );
+
+                                        if click_response.clicked() {
+                                            self.selected_player_id = Some(player_id);
+                                        }
+
+                                        ui.separator();
                                     }
-                                });
+                                }
+                            }
                         }
                     }).response;
 
