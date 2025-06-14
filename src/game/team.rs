@@ -6,6 +6,7 @@ use crate::game::player::AgentRole;
 pub struct Team {
     pub id: Uuid,
     pub name: String,
+    pub nickname: String,
     pub players: Vec<Uuid>, // Player IDs
     pub starting_lineup: Vec<Uuid>, // 5 players
     pub coach: Option<String>,
@@ -20,11 +21,28 @@ impl Team {
     pub fn new(name: String) -> Self {
         Self {
             id: Uuid::new_v4(),
-            name,
+            name: name.clone(),
+            nickname: name, // Use name as nickname for backward compatibility
             players: Vec::new(),
             starting_lineup: Vec::new(),
             coach: None,
             region: "Americas".to_string(), // Default region for MVP
+            championship_points: 0,
+            wins: 0,
+            losses: 0,
+            team_cohesion: 10, // Start with average cohesion
+        }
+    }
+
+    pub fn new_with_details(name: String, nickname: String, region: String) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            name,
+            nickname,
+            players: Vec::new(),
+            starting_lineup: Vec::new(),
+            coach: None,
+            region,
             championship_points: 0,
             wins: 0,
             losses: 0,

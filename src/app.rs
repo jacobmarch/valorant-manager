@@ -79,7 +79,7 @@ impl ValorantManagerApp {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     // Game info
                     if let Some(team) = &self.game_state.current_team {
-                        ui.label(format!("Team: {}", team.name));
+                        ui.label(format!("Team: {} ({})", team.name, team.nickname));
                         ui.separator();
                         ui.label(format!("Budget: ${}", self.game_state.budget));
                         ui.separator();
