@@ -40,10 +40,20 @@ impl SquadScreen {
                         // Starting Lineup Section
                         ui.horizontal(|ui| {
                             let chevron = if self.starters_collapsed { "⏵" } else { "⏷" };
-                            if ui.add_sized(
-                                [ui.available_width(), 30.0],
-                                egui::Button::new(format!("{} Starting Lineup", chevron))
-                            ).clicked() {
+                            let starter_count = team.starting_lineup.len();
+                            let count_text = format!("{} Starting Lineup ({}/5)", chevron, starter_count);
+                            let button_color = if starter_count >= 5 {
+                                Some(egui::Color32::from_rgb(100, 150, 100)) // Green when full
+                            } else {
+                                None
+                            };
+                            
+                            let mut button = egui::Button::new(count_text);
+                            if let Some(color) = button_color {
+                                button = button.fill(color);
+                            }
+                            
+                            if ui.add_sized([ui.available_width(), 30.0], button).clicked() {
                                 self.starters_collapsed = !self.starters_collapsed;
                             }
                         });
@@ -57,9 +67,12 @@ impl SquadScreen {
                         // Bench Players Section
                         ui.horizontal(|ui| {
                             let chevron = if self.bench_collapsed { "⏵" } else { "⏷" };
+                            let bench_count = team.players.len() - team.starting_lineup.len();
+                            let count_text = format!("{} Bench Players ({})", chevron, bench_count);
+                            
                             if ui.add_sized(
                                 [ui.available_width(), 30.0],
-                                egui::Button::new(format!("{} Bench Players", chevron))
+                                egui::Button::new(count_text)
                             ).clicked() {
                                 self.bench_collapsed = !self.bench_collapsed;
                             }
@@ -227,12 +240,22 @@ impl SquadScreen {
         if self.dragging_player_id.is_none() {
             self.drop_target_position = None;
         }
+        
+        const MAX_STARTERS: usize = 5;
 
         for (index, &player_id) in players.iter().enumerate() {
             // Show drop zone before this player if hovering
             if let Some((target_is_starters, target_pos)) = self.drop_target_position {
                 if target_is_starters == is_starters && target_pos == index {
-                    self.show_drop_zone(ui);
+                    // Check if this drop would cause a substitution
+                    let will_cause_substitution = if let Some(dragged_id) = self.dragging_player_id {
+                        target_is_starters && 
+                        !team.starting_lineup.contains(&dragged_id) && 
+                        team.starting_lineup.len() >= MAX_STARTERS
+                    } else {
+                        false
+                    };
+                    self.show_drop_zone_with_context(ui, target_is_starters, will_cause_substitution);
                 }
             }
 
@@ -352,7 +375,15 @@ impl SquadScreen {
         // Show drop zone at the end if hovering there
         if let Some((target_is_starters, target_pos)) = self.drop_target_position {
             if target_is_starters == is_starters && target_pos == players.len() {
-                self.show_drop_zone(ui);
+                // Check if this drop would cause a substitution
+                let will_cause_substitution = if let Some(dragged_id) = self.dragging_player_id {
+                    target_is_starters && 
+                    !team.starting_lineup.contains(&dragged_id) && 
+                    team.starting_lineup.len() >= MAX_STARTERS
+                } else {
+                    false
+                };
+                self.show_drop_zone_with_context(ui, target_is_starters, will_cause_substitution);
             }
         }
 
@@ -392,24 +423,48 @@ impl SquadScreen {
     }
 
     fn show_drop_zone(&self, ui: &mut egui::Ui) {
+        self.show_drop_zone_with_context(ui, false, false);
+    }
+    
+    fn show_drop_zone_with_context(&self, ui: &mut egui::Ui, _is_starters_target: bool, will_cause_substitution: bool) {
         let (_, drop_zone_rect) = ui.allocate_space([ui.available_width(), 40.0].into());
+        
+        // Choose colors based on context
+        let (bg_color, border_color, text_color) = if will_cause_substitution {
+            (
+                egui::Color32::from_rgba_unmultiplied(200, 150, 100, 50), // Orange background
+                egui::Color32::from_rgb(200, 150, 100), // Orange border
+                egui::Color32::from_rgb(120, 90, 60) // Dark orange text
+            )
+        } else {
+            (
+                egui::Color32::from_rgba_unmultiplied(100, 200, 100, 50), // Green background
+                egui::Color32::from_rgb(100, 200, 100), // Green border
+                egui::Color32::from_rgb(60, 120, 60) // Dark green text
+            )
+        };
         
         // Draw a highlighted drop zone
         ui.painter().rect_filled(
             drop_zone_rect,
             egui::Rounding::same(4.0),
-            egui::Color32::from_rgba_unmultiplied(100, 200, 100, 50)
+            bg_color
         );
         ui.painter().rect_stroke(
             drop_zone_rect,
             egui::Rounding::same(4.0),
-            egui::Stroke::new(2.0, egui::Color32::from_rgb(100, 200, 100))
+            egui::Stroke::new(2.0, border_color)
         );
         
-        // Add some text to indicate it's a drop zone
+        // Add contextual text
         ui.allocate_ui_at_rect(drop_zone_rect, |ui| {
             ui.centered_and_justified(|ui| {
-                ui.label(egui::RichText::new("Drop here").color(egui::Color32::from_rgb(60, 120, 60)));
+                let text = if will_cause_substitution {
+                    "Drop here (will move 5th starter to bench)"
+                } else {
+                    "Drop here"
+                };
+                ui.label(egui::RichText::new(text).color(text_color).size(10.0));
             });
         });
     }
@@ -431,6 +486,8 @@ impl SquadScreen {
     }
 
     fn perform_player_move(&self, team: &mut crate::game::Team, player_id: uuid::Uuid, target_is_starters: bool, target_pos: usize) {
+        const MAX_STARTERS: usize = 5;
+        
         // Check if player is currently in starters
         let was_in_starters = team.starting_lineup.contains(&player_id);
         
@@ -439,6 +496,13 @@ impl SquadScreen {
 
         // Add to new position
         if target_is_starters {
+            // Check if we need to make room in starters
+            if !was_in_starters && team.starting_lineup.len() >= MAX_STARTERS {
+                // Moving a bench player to starters, but starters is full
+                // Remove the last starter (they go to bench automatically)
+                team.starting_lineup.pop();
+            }
+            
             // Adjust target position if the player was originally in starters and before the target position
             let adjusted_pos = if was_in_starters {
                 if let Some((origin_is_starters, origin_pos)) = self.drag_origin {
@@ -455,9 +519,20 @@ impl SquadScreen {
                 target_pos
             };
             
-            // Clamp to valid range
-            let insert_pos = adjusted_pos.min(team.starting_lineup.len());
+            // Clamp to valid range (considering the max starters limit)
+            let max_insert_pos = if was_in_starters {
+                team.starting_lineup.len() // Can insert anywhere in current list
+            } else {
+                (team.starting_lineup.len()).min(MAX_STARTERS - 1) // Leave room for the new player
+            };
+            let insert_pos = adjusted_pos.min(max_insert_pos);
+            
             team.starting_lineup.insert(insert_pos, player_id);
+            
+            // Ensure we don't exceed the maximum
+            if team.starting_lineup.len() > MAX_STARTERS {
+                team.starting_lineup.truncate(MAX_STARTERS);
+            }
         }
         // If dropping to bench, just removing from starters is enough since bench is derived
     }
