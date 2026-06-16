@@ -1,61 +1,26 @@
-import { selectUserTeam, useGameStore } from "../store/game-store";
+import { useGameStore } from '../store/useGameStore';
 
 export function Schedule() {
-  const state = useGameStore((store) => store.state);
-  const setStateAdvance = useGameStore((store) => store.advance);
-  const startMatch = useGameStore((store) => store.startMatch);
-  const userTeam = selectUserTeam(state);
+  const game = useGameStore((state) => state.game)!;
+  const teamsById = new Map(game.teams.map((team) => [team.id, team]));
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Schedule</h1>
-          <p className="text-slate-400">
-            Week {state.calendar.week}, {state.calendar.day}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => setStateAdvance("aim")} className="rounded-xl bg-slate-800 px-4 py-2 hover:bg-slate-700">
-            Advance Day
-          </button>
-          <button onClick={() => startMatch()} className="rounded-xl bg-rose-500 px-4 py-2 font-semibold hover:bg-rose-400">
-            Prepare Match Day
-          </button>
-        </div>
-      </div>
-      <div className="grid gap-3">
-        {state.fixtures.slice(0, 18).map((fixture) => {
-          const home = state.teams.find((team) => team.id === fixture.homeTeamId);
-          const away = state.teams.find((team) => team.id === fixture.awayTeamId);
-          const involvesUser = fixture.homeTeamId === userTeam.id || fixture.awayTeamId === userTeam.id;
-          return (
-            <article
-              key={fixture.id}
-              className={`panel flex flex-wrap items-center justify-between gap-4 p-4 ${
-                involvesUser ? "border-cyan-500/80" : ""
-              }`}
-            >
-              <div>
-                <p className="text-sm text-slate-400">Week {fixture.week}</p>
-                <h3 className="font-semibold">
-                  {home?.shortName} vs {away?.shortName}
-                </h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={fixture.played ? "text-green-300" : "text-slate-400"}>{fixture.played ? "Played" : "Upcoming"}</span>
-                {involvesUser && !fixture.played && (
-                  <button
-                    onClick={() => startMatch(fixture.id)}
-                    className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950"
-                  >
-                    Play
-                  </button>
-                )}
-              </div>
-            </article>
-          );
-        })}
+    <section>
+      <h1 className="text-3xl font-black">Schedule</h1>
+      <div className="mt-6 space-y-5">
+        {Array.from({ length: 14 }, (_, index) => index + 1).map((matchday) => (
+          <article key={matchday} className="rounded-2xl border border-white/10 bg-panel p-5">
+            <h2 className="text-lg font-bold">Matchday {matchday}</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {game.schedule.filter((fixture) => fixture.matchday === matchday).map((fixture) => (
+                <div key={fixture.id} className={`rounded-xl p-4 ${fixture.homeTeamId === game.userTeamId || fixture.awayTeamId === game.userTeamId ? 'bg-valorant/15 ring-1 ring-valorant/40' : 'bg-slate-900'}`}>
+                  <p className="font-semibold">{teamsById.get(fixture.homeTeamId)?.name} vs {teamsById.get(fixture.awayTeamId)?.name}</p>
+                  <p className="mt-1 text-sm text-slate-400">Day {fixture.day} - {fixture.result ? `${fixture.result.homeRounds}-${fixture.result.awayRounds}` : fixture.day < game.currentDay ? 'Skipped' : 'Upcoming'}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );
