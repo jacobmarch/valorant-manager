@@ -1,16 +1,36 @@
 @import "tailwindcss";
 
 @theme {
-  --color-panel: #101827;
-  --color-ink: #e5edf7;
+  /* Base surfaces — neutral near-black, no blue tint */
+  --color-bg: #0a0a0d;
+  --color-surface: #141419;
+  --color-surface-2: #1c1c23;
+  --color-surface-3: #26262f;
+  --color-border: #2e2e39;
+  --color-line: #232329;
+
+  /* Text */
+  --color-ink: #f3f4f7;
+  --color-muted: #a7a8b2;
+  --color-faint: #71727d;
+
+  /* Accent + semantics */
   --color-valorant: #ff4655;
+  --color-valorant-bright: #ff6470;
+  --color-positive: #38d39f;
+  --color-negative: #ff6b81;
+  --color-gold: #f4c14d;
+
+  /* Legacy alias kept for any stragglers */
+  --color-panel: #141419;
 }
 
 :root {
   color-scheme: dark;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #070b12;
-  color: #e5edf7;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  --tw-ring-color: rgba(255, 70, 85, 0.45);
 }
 
 body {
@@ -37,4 +57,23 @@ select:disabled,
 [aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+/* Tabular figures for stat tables and box scores */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Thin custom scrollbars so dense panels stay clean */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-3) transparent;
+}
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
+  border-radius: 9999px;
 }

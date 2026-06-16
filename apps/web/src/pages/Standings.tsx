@@ -1,69 +1,95 @@
 import { useGameStore } from '../store/useGameStore';
+import { getTeamForm } from '../lib/stats';
+import { Card, Diff, Eyebrow, FormStreak, PanelHeader } from '../components/ui';
+import { PlayoffBracket } from '../components/PlayoffBracket';
+
+const PLAYOFF_CUTOFF = 4;
 
 export function Standings() {
   const game = useGameStore((state) => state.game)!;
+  const setScreen = useGameStore((state) => state.setScreen);
   const teamsById = new Map(game.teams.map((team) => [team.id, team]));
 
   return (
-    <section>
-      <p className="text-sm uppercase tracking-[0.4em] text-valorant">League Table</p>
-      <h1 className="mt-2 text-3xl font-black">Season {game.seasonYear} Regular-Season Standings</h1>
-      <p className="mt-2 text-sm text-slate-400">Sorted by map differential, then round differential.</p>
-      {game.playoffBracket && (
-        <div className="mt-5 rounded-2xl border border-white/10 bg-panel p-5">
-          <h2 className="font-bold">Playoff Seeds</h2>
-          <div className="mt-3 grid gap-2 md:grid-cols-4">
-            {game.playoffBracket.seeds.map((seed) => (
-              <div key={seed.teamId} className="rounded-xl bg-slate-950 p-3">
-                <p className="text-xs text-slate-500">Seed #{seed.seed}</p>
-                <p className="font-semibold">{teamsById.get(seed.teamId)?.name}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-panel">
-        <table className="w-full min-w-[760px] text-left">
-          <thead className="bg-slate-950 text-xs uppercase tracking-wider text-slate-400">
-            <tr>
-              <th className="px-4 py-3">#</th>
-              <th className="px-4 py-3">Team</th>
-              <th className="px-4 py-3">P</th>
-              <th className="px-4 py-3">W</th>
-              <th className="px-4 py-3">L</th>
-              <th className="px-4 py-3">MF</th>
-              <th className="px-4 py-3">MA</th>
-              <th className="px-4 py-3">MD</th>
-              <th className="px-4 py-3">RF</th>
-              <th className="px-4 py-3">RA</th>
-              <th className="px-4 py-3">RD</th>
-            </tr>
-          </thead>
-          <tbody>
-            {game.standings.map((row, index) => {
-              const team = teamsById.get(row.teamId);
-              return (
-                <tr key={row.teamId} className={`border-t border-white/10 ${row.teamId === game.userTeamId ? 'bg-valorant/10' : ''}`}>
-                  <td className="px-4 py-4 font-bold">{index + 1}</td>
-                  <td className="px-4 py-4">
-                    <p className="font-bold">{team?.name}</p>
-                    <p className="text-xs text-slate-500">{team?.city}</p>
-                  </td>
-                  <td className="px-4 py-4">{row.played}</td>
-                  <td className="px-4 py-4">{row.wins}</td>
-                  <td className="px-4 py-4">{row.losses}</td>
-                  <td className="px-4 py-4">{row.mapsFor}</td>
-                  <td className="px-4 py-4">{row.mapsAgainst}</td>
-                  <td className="px-4 py-4 font-black">{row.mapDiff}</td>
-                  <td className="px-4 py-4">{row.roundsFor}</td>
-                  <td className="px-4 py-4">{row.roundsAgainst}</td>
-                  <td className="px-4 py-4">{row.roundDiff}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+    <section className="space-y-6">
+      <div>
+        <Eyebrow>League Table</Eyebrow>
+        <h1 className="mt-2 text-3xl font-black tracking-tight">Season {game.seasonYear} Standings</h1>
+        <p className="mt-1 text-sm text-muted">Ranked by map differential, then round differential. Top {PLAYOFF_CUTOFF} qualify for playoffs.</p>
       </div>
+
+      {game.seasonPhase !== 'regularSeason' && (
+        <Card className="p-5">
+          <PanelHeader title="Playoff Bracket" subtitle={`Season ${game.seasonYear} postseason`} action="Schedule" onAction={() => setScreen('schedule')} />
+          <div className="mt-4">
+            <PlayoffBracket game={game} />
+          </div>
+        </Card>
+      )}
+
+      <Card className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[780px] text-left text-sm tnum">
+            <thead className="border-b border-border bg-surface-2 text-[0.65rem] uppercase tracking-wider text-faint">
+              <tr>
+                <th className="px-4 py-3 font-semibold">#</th>
+                <th className="px-4 py-3 font-semibold">Team</th>
+                <th className="px-3 py-3 text-center font-semibold">P</th>
+                <th className="px-3 py-3 text-center font-semibold">W</th>
+                <th className="px-3 py-3 text-center font-semibold">L</th>
+                <th className="px-3 py-3 text-center font-semibold">MF</th>
+                <th className="px-3 py-3 text-center font-semibold">MA</th>
+                <th className="px-3 py-3 text-center font-semibold">MD</th>
+                <th className="px-3 py-3 text-center font-semibold">RD</th>
+                <th className="px-4 py-3 font-semibold">Form</th>
+              </tr>
+            </thead>
+            <tbody>
+              {game.standings.map((row, index) => {
+                const team = teamsById.get(row.teamId);
+                const isUser = row.teamId === game.userTeamId;
+                const rank = index + 1;
+                const playoffLine = rank === PLAYOFF_CUTOFF;
+                return (
+                  <tr
+                    key={row.teamId}
+                    className={`border-b border-line ${playoffLine ? 'border-b-2 border-b-gold/40' : ''} ${
+                      isUser ? 'bg-valorant/10' : 'hover:bg-surface-2'
+                    }`}
+                  >
+                    <td className="px-4 py-3">
+                      <span className={`font-black ${rank <= PLAYOFF_CUTOFF ? 'text-gold' : 'text-faint'}`}>{rank}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="h-7 w-1 rounded-full" style={{ background: `linear-gradient(${team?.colors.primary}, ${team?.colors.secondary})` }} />
+                        <div>
+                          <p className={`font-bold ${isUser ? 'text-valorant-bright' : 'text-ink'}`}>{team?.name}</p>
+                          <p className="text-xs text-faint">{team?.city}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-center text-muted">{row.played}</td>
+                    <td className="px-3 py-3 text-center font-bold text-positive">{row.wins}</td>
+                    <td className="px-3 py-3 text-center font-bold text-negative">{row.losses}</td>
+                    <td className="px-3 py-3 text-center text-muted">{row.mapsFor}</td>
+                    <td className="px-3 py-3 text-center text-muted">{row.mapsAgainst}</td>
+                    <td className="px-3 py-3 text-center">
+                      <Diff value={row.mapDiff} />
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <Diff value={row.roundDiff} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <FormStreak form={getTeamForm(game, row.teamId, 5)} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </section>
   );
 }
