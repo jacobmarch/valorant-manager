@@ -6,10 +6,12 @@ function emptyRow(teamId: string): StandingsRow {
     played: 0,
     wins: 0,
     losses: 0,
+    mapsFor: 0,
+    mapsAgainst: 0,
+    mapDiff: 0,
     roundsFor: 0,
     roundsAgainst: 0,
-    roundDiff: 0,
-    points: 0
+    roundDiff: 0
   };
 }
 
@@ -33,17 +35,23 @@ export function getStandings(teams: Team[], matchHistory: MatchResult[]): Standi
     if (result.winnerTeamId === result.homeTeamId) {
       home.wins += 1;
       away.losses += 1;
-      home.points += 3;
+      home.mapsFor += 1;
+      away.mapsAgainst += 1;
     } else {
       away.wins += 1;
       home.losses += 1;
-      away.points += 3;
+      away.mapsFor += 1;
+      home.mapsAgainst += 1;
     }
   }
 
   return [...rows.values()]
-    .map((row) => ({ ...row, roundDiff: row.roundsFor - row.roundsAgainst }))
-    .sort((a, b) => b.points - a.points || b.roundDiff - a.roundDiff || b.roundsFor - a.roundsFor || a.teamId.localeCompare(b.teamId));
+    .map((row) => ({
+      ...row,
+      mapDiff: row.mapsFor - row.mapsAgainst,
+      roundDiff: row.roundsFor - row.roundsAgainst
+    }))
+    .sort((a, b) => b.mapDiff - a.mapDiff || b.roundDiff - a.roundDiff || b.mapsFor - a.mapsFor || b.roundsFor - a.roundsFor || a.teamId.localeCompare(b.teamId));
 }
 
 export function getNextUserFixture(state: GameState): Fixture | undefined {

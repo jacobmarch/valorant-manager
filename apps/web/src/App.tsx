@@ -1,4 +1,5 @@
 import { AppShell } from './components/AppShell';
+import { AroundLeague } from './pages/AroundLeague';
 import { Dashboard } from './pages/Dashboard';
 import { MainMenu } from './pages/MainMenu';
 import { MatchHistory } from './pages/MatchHistory';
@@ -24,6 +25,7 @@ export default function App() {
       {screen === 'schedule' && <Schedule />}
       {screen === 'standings' && <Standings />}
       {screen === 'match' && <MatchScreen />}
+      {screen === 'aroundLeague' && <AroundLeague />}
       {screen === 'history' && <MatchHistory />}
       {screen === 'saves' && <SaveLoad />}
     </AppShell>

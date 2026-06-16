@@ -7,6 +7,7 @@ const navItems: Array<{ screen: Screen; label: string }> = [
   { screen: 'schedule', label: 'Schedule' },
   { screen: 'standings', label: 'Standings' },
   { screen: 'match', label: 'Match' },
+  { screen: 'aroundLeague', label: 'Around League' },
   { screen: 'history', label: 'History' },
   { screen: 'saves', label: 'Save/Load' }
 ];
@@ -15,7 +16,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const game = useGameStore((state) => state.game);
   const screen = useGameStore((state) => state.screen);
   const setScreen = useGameStore((state) => state.setScreen);
+  const advanceDay = useGameStore((state) => state.advanceDay);
   const userTeam = game?.teams.find((team) => team.id === game.userTeamId);
+  const advanceLabel = game?.seasonPhase === 'seasonReview' ? 'Start Next Season' : 'Advance Day';
 
   return (
     <div className="min-h-screen bg-[#070b12] text-ink">
@@ -28,6 +31,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <p className="mt-4 text-sm text-slate-400">Manager {game?.managerName}</p>
             <p className="text-lg font-bold">{userTeam.name}</p>
             <p className="text-sm text-slate-500">Day {game?.currentDay}</p>
+            <button className="mt-4 w-full rounded-xl bg-valorant px-4 py-3 font-bold text-white shadow-lg shadow-valorant/20" onClick={advanceDay}>
+              {advanceLabel}
+            </button>
           </div>
         )}
         <nav className="mt-8 space-y-2">
@@ -48,13 +54,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             <p className="text-xs uppercase tracking-[0.35em] text-valorant">Valorant Manager</p>
             <p className="font-bold">{userTeam?.name}</p>
           </div>
-          <select className="rounded-lg bg-slate-950 p-2 text-sm" value={screen} onChange={(event) => setScreen(event.target.value as Screen)}>
-            {navItems.map((item) => (
-              <option key={item.screen} value={item.screen}>
-                {item.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <button className="rounded-lg bg-valorant px-3 py-2 text-sm font-bold text-white" onClick={advanceDay}>
+              {advanceLabel}
+            </button>
+            <select className="rounded-lg bg-slate-950 p-2 text-sm" value={screen} onChange={(event) => setScreen(event.target.value as Screen)}>
+              {navItems.map((item) => (
+                <option key={item.screen} value={item.screen}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </header>
       <main className="p-4 lg:ml-64 lg:p-8">{children}</main>

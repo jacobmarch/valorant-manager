@@ -8,6 +8,7 @@ export function Standings() {
     <section>
       <p className="text-sm uppercase tracking-[0.4em] text-valorant">League Table</p>
       <h1 className="mt-2 text-3xl font-black">Season {game.seasonYear} Regular-Season Standings</h1>
+      <p className="mt-2 text-sm text-slate-400">Sorted by map differential, then round differential.</p>
       {game.playoffBracket && (
         <div className="mt-5 rounded-2xl border border-white/10 bg-panel p-5">
           <h2 className="font-bold">Playoff Seeds</h2>
@@ -30,10 +31,12 @@ export function Standings() {
               <th className="px-4 py-3">P</th>
               <th className="px-4 py-3">W</th>
               <th className="px-4 py-3">L</th>
+              <th className="px-4 py-3">MF</th>
+              <th className="px-4 py-3">MA</th>
+              <th className="px-4 py-3">MD</th>
               <th className="px-4 py-3">RF</th>
               <th className="px-4 py-3">RA</th>
               <th className="px-4 py-3">RD</th>
-              <th className="px-4 py-3">Pts</th>
             </tr>
           </thead>
           <tbody>
@@ -49,10 +52,12 @@ export function Standings() {
                   <td className="px-4 py-4">{row.played}</td>
                   <td className="px-4 py-4">{row.wins}</td>
                   <td className="px-4 py-4">{row.losses}</td>
+                  <td className="px-4 py-4">{row.mapsFor}</td>
+                  <td className="px-4 py-4">{row.mapsAgainst}</td>
+                  <td className="px-4 py-4 font-black">{row.mapDiff}</td>
                   <td className="px-4 py-4">{row.roundsFor}</td>
                   <td className="px-4 py-4">{row.roundsAgainst}</td>
                   <td className="px-4 py-4">{row.roundDiff}</td>
-                  <td className="px-4 py-4 font-black">{row.points}</td>
                 </tr>
               );
             })}

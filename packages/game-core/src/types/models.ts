@@ -86,10 +86,12 @@ export interface StandingsRow {
   played: number;
   wins: number;
   losses: number;
+  mapsFor: number;
+  mapsAgainst: number;
+  mapDiff: number;
   roundsFor: number;
   roundsAgainst: number;
   roundDiff: number;
-  points: number;
 }
 
 export interface PlayoffSeed {

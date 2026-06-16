@@ -49,6 +49,7 @@ describe('advanceDay', () => {
     expect(next.matchHistory).toHaveLength(4);
     expect(next.schedule.filter((fixture) => fixture.day === 1 && fixture.result)).toHaveLength(4);
     expect(next.standings.reduce((played, row) => played + row.played, 0)).toBe(8);
+    expect(next.standings.every((row) => row.mapDiff === row.wins - row.losses)).toBe(true);
     expect(getStandings(next.teams, next.matchHistory)).toEqual(next.standings);
   });
 });
@@ -60,6 +61,7 @@ describe('season flow', () => {
     expect(game.currentDay).toBe(15);
     expect(game.seasonPhase).toBe('playoffs');
     expect(game.playoffBracket?.seeds).toHaveLength(4);
+    expect(game.playoffBracket?.seeds.map((seed) => seed.teamId)).toEqual(game.standings.slice(0, 4).map((row) => row.teamId));
     expect(getPlayoffFixtures(game, 'semifinal')).toHaveLength(2);
     expect(getPlayoffFixtures(game, 'final')).toHaveLength(0);
   });

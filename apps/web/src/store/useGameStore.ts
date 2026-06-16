@@ -2,7 +2,7 @@ import { advanceDay as advanceGameDay, createNewGame, deserializeGameState, seri
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Screen = 'dashboard' | 'roster' | 'schedule' | 'standings' | 'match' | 'history' | 'saves';
+export type Screen = 'dashboard' | 'roster' | 'schedule' | 'standings' | 'match' | 'aroundLeague' | 'history' | 'saves';
 
 interface GameStore {
   game: GameState | null;
