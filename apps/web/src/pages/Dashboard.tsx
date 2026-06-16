@@ -1,4 +1,4 @@
-import { getNextUserFixture, getRecentResults, type GameState } from '@valorant-manager/game-core';
+import { getCurrentPhaseLabel, getNextUserFixture, getRecentResults, getSeasonChampion, type GameState } from '@valorant-manager/game-core';
 import { useGameStore } from '../store/useGameStore';
 
 function teamName(game: GameState, teamId: string) {
@@ -13,18 +13,29 @@ export function Dashboard() {
   const nextFixture = getNextUserFixture(game);
   const userStanding = game.standings.find((row) => row.teamId === game.userTeamId);
   const userTeam = game.teams.find((team) => team.id === game.userTeamId)!;
+  const championTeamId = getSeasonChampion(game);
+  const championTeam = championTeamId ? game.teams.find((team) => team.id === championTeamId) : undefined;
+  const phaseLabel = getCurrentPhaseLabel(game);
+  const advanceLabel = game.seasonPhase === 'seasonReview' ? 'Start Next Season' : 'Advance Day';
 
   return (
     <section className="space-y-6">
       <div className="rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_top_left,#1f2937,#101827_55%)] p-6 shadow-2xl">
-        <p className="text-sm uppercase tracking-[0.4em] text-valorant">Day {game.currentDay}</p>
+        <p className="text-sm uppercase tracking-[0.4em] text-valorant">Season {game.seasonYear} · {phaseLabel} · Day {game.currentDay}</p>
         <h1 className="mt-3 text-4xl font-black">{userTeam.name} Command Center</h1>
         <p className="mt-3 max-w-3xl text-slate-300">
-          Manage your five-player roster, advance through the double round-robin season, and track every result from one local browser save.
+          Manage your five-player roster, chase the playoffs, and carry your squad from one season to the next.
         </p>
+        {game.seasonPhase === 'seasonReview' && championTeam && (
+          <div className="mt-5 rounded-2xl border border-valorant/30 bg-valorant/10 p-4">
+            <p className="text-sm text-slate-300">Season {game.seasonYear} Champion</p>
+            <p className="text-2xl font-black">{championTeam.name}</p>
+            <p className="mt-1 text-sm text-slate-400">Advance to archive the year, reset standings, regenerate the schedule, and begin next season.</p>
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap gap-3">
           <button className="rounded-xl bg-valorant px-5 py-3 font-bold text-white shadow-lg shadow-valorant/20" onClick={advanceDay}>
-            Advance Day
+            {advanceLabel}
           </button>
           <button className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 font-bold text-white hover:bg-white/10" onClick={() => setScreen('match')}>
             Match Center
@@ -55,7 +66,9 @@ export function Dashboard() {
           <h2 className="text-xl font-black">Next Match</h2>
           {nextFixture ? (
             <div className="mt-5 rounded-xl bg-slate-950 p-4">
-              <p className="text-sm text-slate-400">Matchday {nextFixture.matchday} · Day {nextFixture.day}</p>
+              <p className="text-sm text-slate-400">
+                {nextFixture.type === 'playoff' ? `${nextFixture.playoffRound === 'final' ? 'Playoff Final' : 'Playoff Semifinal'}` : `Matchday ${nextFixture.matchday}`} · Day {nextFixture.day}
+              </p>
               <p className="mt-2 text-lg font-bold">
                 {teamName(game, nextFixture.homeTeamId)} vs {teamName(game, nextFixture.awayTeamId)}
               </p>

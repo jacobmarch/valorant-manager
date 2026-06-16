@@ -13,14 +13,17 @@ export function createNewGame(options: NewGameOptions = {}): GameState {
   const selectedTeamId = options.userTeamId && teams.some((team) => team.id === options.userTeamId) ? options.userTeamId : teams[0].id;
 
   return {
-    version: 1,
+    version: 2,
     createdAt: new Date().toISOString(),
     managerName: options.managerName?.trim() || 'Manager',
+    seasonYear: 1,
+    seasonPhase: 'regularSeason',
     currentDay: 1,
     userTeamId: selectedTeamId,
     teams,
-    schedule: createDoubleRoundRobinSchedule(teams),
+    schedule: createDoubleRoundRobinSchedule(teams, 1),
     matchHistory: [],
-    standings: getStandings(teams, [])
+    standings: getStandings(teams, []),
+    seasonHistory: []
   };
 }

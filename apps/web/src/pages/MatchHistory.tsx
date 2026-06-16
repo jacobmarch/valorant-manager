@@ -8,7 +8,21 @@ export function MatchHistory() {
   return (
     <section>
       <p className="text-sm uppercase tracking-[0.4em] text-valorant">Archive</p>
-      <h1 className="mt-2 text-3xl font-black">Match History</h1>
+      <h1 className="mt-2 text-3xl font-black">Season {game.seasonYear} Match History</h1>
+      {game.seasonHistory.length > 0 && (
+        <div className="mt-6 rounded-2xl border border-white/10 bg-panel p-5">
+          <h2 className="text-xl font-black">Past Champions</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {[...game.seasonHistory].reverse().map((season) => (
+              <div key={season.seasonYear} className="rounded-xl bg-slate-950 p-4">
+                <p className="text-sm text-slate-400">Season {season.seasonYear}</p>
+                <p className="font-bold">Champion: {teamsById.get(season.championTeamId)?.name}</p>
+                <p className="text-sm text-slate-400">Runner-up: {teamsById.get(season.runnerUpTeamId)?.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="mt-6 space-y-4">
         {game.matchHistory.length === 0 && <p className="rounded-2xl border border-white/10 bg-panel p-6 text-slate-400">No completed matches yet.</p>}
         {[...game.matchHistory].reverse().map((result) => (
@@ -16,6 +30,9 @@ export function MatchHistory() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm text-slate-400">Matchday {result.matchday} · Day {result.day}</p>
+                <p className="text-xs uppercase tracking-[0.25em] text-valorant">
+                  {result.fixtureType === 'playoff' ? (result.playoffRound === 'final' ? 'Playoff Final' : 'Playoff Semifinal') : 'Regular Season'}
+                </p>
                 <h2 className="text-xl font-black">
                   {teamsById.get(result.homeTeamId)?.shortName} {result.homeRounds} - {result.awayRounds} {teamsById.get(result.awayTeamId)?.shortName}
                 </h2>

@@ -9,6 +9,7 @@ export function MatchScreen() {
   const teamsById = new Map(game.teams.map((team) => [team.id, team]));
   const playersById = new Map(game.teams.flatMap((team) => team.players).map((player) => [player.id, player]));
   const isToday = fixture?.day === game.currentDay;
+  const championTeam = game.playoffBracket?.championTeamId ? teamsById.get(game.playoffBracket.championTeamId) : undefined;
   const latestUserResult = [...game.matchHistory]
     .reverse()
     .find((result) => result.homeTeamId === game.userTeamId || result.awayTeamId === game.userTeamId);
@@ -16,11 +17,20 @@ export function MatchScreen() {
   if (!fixture) {
     return (
       <section className="rounded-2xl border border-white/10 bg-panel p-6">
-        <h1 className="text-3xl font-black">Season Complete</h1>
-        <p className="mt-3 text-slate-400">There are no remaining user fixtures.</p>
+        <h1 className="text-3xl font-black">{game.seasonPhase === 'seasonReview' ? 'Season Review' : 'No Upcoming Match'}</h1>
+        {game.seasonPhase === 'seasonReview' && championTeam ? (
+          <>
+            <p className="mt-3 text-slate-300">Season {game.seasonYear} champion: <span className="font-bold text-white">{championTeam.name}</span></p>
+            <p className="mt-2 text-slate-400">Advance day from the dashboard to archive this season and begin next year.</p>
+          </>
+        ) : (
+          <p className="mt-3 text-slate-400">There are no remaining user fixtures right now.</p>
+        )}
       </section>
     );
   }
+
+  const fixtureLabel = fixture.type === 'playoff' ? (fixture.playoffRound === 'final' ? 'Playoff Final' : 'Playoff Semifinal') : `Matchday ${fixture.matchday}`;
 
   return (
     <section className="space-y-6">
@@ -29,7 +39,7 @@ export function MatchScreen() {
         <h1 className="mt-2 text-3xl font-black">
           {teamsById.get(fixture.homeTeamId)?.name} vs {teamsById.get(fixture.awayTeamId)?.name}
         </h1>
-        <p className="mt-2 text-slate-400">Matchday {fixture.matchday} · Scheduled for day {fixture.day} · Current day {game.currentDay}</p>
+        <p className="mt-2 text-slate-400">Season {game.seasonYear} · {fixtureLabel} · Scheduled for day {fixture.day} · Current day {game.currentDay}</p>
         <div className="mt-6 flex flex-wrap gap-3">
           {isToday ? (
             <button className="rounded-xl bg-valorant px-5 py-3 font-bold text-white" onClick={advanceDay}>

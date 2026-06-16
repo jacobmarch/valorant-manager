@@ -1,4 +1,4 @@
-import type { Fixture, GameState, MatchResult, StandingsRow, Team } from '../types/models';
+import type { Fixture, GameState, MatchResult, PlayoffRound, StandingsRow, Team } from '../types/models';
 
 function emptyRow(teamId: string): StandingsRow {
   return {
@@ -16,7 +16,7 @@ function emptyRow(teamId: string): StandingsRow {
 export function getStandings(teams: Team[], matchHistory: MatchResult[]): StandingsRow[] {
   const rows = new Map(teams.map((team) => [team.id, emptyRow(team.id)]));
 
-  for (const result of matchHistory) {
+  for (const result of matchHistory.filter((candidate) => candidate.fixtureType === 'regular')) {
     const home = rows.get(result.homeTeamId);
     const away = rows.get(result.awayTeamId);
     if (!home || !away) {
@@ -52,4 +52,24 @@ export function getNextUserFixture(state: GameState): Fixture | undefined {
 
 export function getRecentResults(state: GameState, limit = 5): MatchResult[] {
   return [...state.matchHistory].sort((a, b) => b.day - a.day || b.fixtureId.localeCompare(a.fixtureId)).slice(0, limit);
+}
+
+export function getCurrentPhaseLabel(state: GameState): string {
+  if (state.seasonPhase === 'regularSeason') {
+    return 'Regular Season';
+  }
+
+  if (state.seasonPhase === 'playoffs') {
+    return 'Playoffs';
+  }
+
+  return 'Season Review';
+}
+
+export function getPlayoffFixtures(state: GameState, round?: PlayoffRound): Fixture[] {
+  return state.schedule.filter((fixture) => fixture.type === 'playoff' && (!round || fixture.playoffRound === round));
+}
+
+export function getSeasonChampion(state: GameState): string | undefined {
+  return state.playoffBracket?.championTeamId;
 }

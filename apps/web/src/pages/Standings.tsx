@@ -7,7 +7,20 @@ export function Standings() {
   return (
     <section>
       <p className="text-sm uppercase tracking-[0.4em] text-valorant">League Table</p>
-      <h1 className="mt-2 text-3xl font-black">Standings</h1>
+      <h1 className="mt-2 text-3xl font-black">Season {game.seasonYear} Regular-Season Standings</h1>
+      {game.playoffBracket && (
+        <div className="mt-5 rounded-2xl border border-white/10 bg-panel p-5">
+          <h2 className="font-bold">Playoff Seeds</h2>
+          <div className="mt-3 grid gap-2 md:grid-cols-4">
+            {game.playoffBracket.seeds.map((seed) => (
+              <div key={seed.teamId} className="rounded-xl bg-slate-950 p-3">
+                <p className="text-xs text-slate-500">Seed #{seed.seed}</p>
+                <p className="font-semibold">{teamsById.get(seed.teamId)?.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-panel">
         <table className="w-full min-w-[760px] text-left">
           <thead className="bg-slate-950 text-xs uppercase tracking-wider text-slate-400">

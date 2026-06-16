@@ -3,6 +3,9 @@ export type PlayerId = string;
 export type FixtureId = string;
 
 export type PlayerRole = 'duelist' | 'initiator' | 'controller' | 'sentinel' | 'flex';
+export type SeasonPhase = 'regularSeason' | 'playoffs' | 'seasonReview';
+export type FixtureType = 'regular' | 'playoff';
+export type PlayoffRound = 'semifinal' | 'final';
 
 export interface PlayerAttributes {
   aim: number;
@@ -40,16 +43,24 @@ export interface Team {
 
 export interface Fixture {
   id: FixtureId;
+  seasonYear: number;
+  type: FixtureType;
   day: number;
   matchday: number;
   homeTeamId: TeamId;
   awayTeamId: TeamId;
+  playoffRound?: PlayoffRound;
+  homeSeed?: number;
+  awaySeed?: number;
   result?: MatchResult;
 }
 
 export interface MatchResult {
   id: string;
   fixtureId: FixtureId;
+  seasonYear: number;
+  fixtureType: FixtureType;
+  playoffRound?: PlayoffRound;
   day: number;
   matchday: number;
   homeTeamId: TeamId;
@@ -81,14 +92,39 @@ export interface StandingsRow {
   points: number;
 }
 
+export interface PlayoffSeed {
+  seed: number;
+  teamId: TeamId;
+}
+
+export interface PlayoffBracket {
+  seasonYear: number;
+  seeds: PlayoffSeed[];
+  championTeamId?: TeamId;
+  runnerUpTeamId?: TeamId;
+}
+
+export interface SeasonSummary {
+  seasonYear: number;
+  championTeamId: TeamId;
+  runnerUpTeamId: TeamId;
+  finalResultId: string;
+  standings: StandingsRow[];
+  completedAtDay: number;
+}
+
 export interface GameState {
-  version: 1;
+  version: 2;
   createdAt: string;
   managerName: string;
+  seasonYear: number;
+  seasonPhase: SeasonPhase;
   currentDay: number;
   userTeamId: TeamId;
   teams: Team[];
   schedule: Fixture[];
   matchHistory: MatchResult[];
   standings: StandingsRow[];
+  playoffBracket?: PlayoffBracket;
+  seasonHistory: SeasonSummary[];
 }

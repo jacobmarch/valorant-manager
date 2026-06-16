@@ -1,6 +1,6 @@
 import type { Fixture, Team } from '../types/models';
 
-export function createDoubleRoundRobinSchedule(teams: Team[]): Fixture[] {
+export function createDoubleRoundRobinSchedule(teams: Team[], seasonYear = 1, startDay = 1): Fixture[] {
   if (teams.length !== 8) {
     throw new Error('Sample league requires exactly 8 teams.');
   }
@@ -26,8 +26,10 @@ export function createDoubleRoundRobinSchedule(teams: Team[]): Fixture[] {
   const secondLeg = firstLeg.map((round) => round.map(([home, away]) => [away, home] as [string, string]));
   return [...firstLeg, ...secondLeg].flatMap((round, roundIndex) =>
     round.map(([homeTeamId, awayTeamId], fixtureIndex) => ({
-      id: `md-${roundIndex + 1}-fixture-${fixtureIndex + 1}`,
-      day: roundIndex + 1,
+      id: `s${seasonYear}-regular-md${roundIndex + 1}-fixture${fixtureIndex + 1}`,
+      seasonYear,
+      type: 'regular' as const,
+      day: startDay + roundIndex,
       matchday: roundIndex + 1,
       homeTeamId,
       awayTeamId

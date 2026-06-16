@@ -76,6 +76,9 @@ export function simulateMatch(fixture: Fixture, teams: Team[], seed = fixture.id
   return {
     id: `result-${fixture.id}`,
     fixtureId: fixture.id,
+    seasonYear: fixture.seasonYear,
+    fixtureType: fixture.type,
+    playoffRound: fixture.playoffRound,
     day: fixture.day,
     matchday: fixture.matchday,
     homeTeamId: homeTeam.id,

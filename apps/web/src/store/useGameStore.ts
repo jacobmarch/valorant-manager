@@ -16,6 +16,11 @@ interface GameStore {
   deleteSave: () => void;
 }
 
+type PersistedGameStore = {
+  game: GameState | null;
+  screen: Screen;
+};
+
 export const useGameStore = create<GameStore>()(
   persist(
     (set, get) => ({
@@ -47,6 +52,15 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: 'valorant-manager-save-v1',
+      version: 2,
+      migrate: (persisted) => {
+        const persistedStore = persisted as Partial<PersistedGameStore>;
+
+        return {
+          game: persistedStore.game ? deserializeGameState(JSON.stringify(persistedStore.game)) : null,
+          screen: persistedStore.screen ?? 'dashboard'
+        };
+      },
       partialize: (state) => ({ game: state.game, screen: state.screen })
     }
   )
