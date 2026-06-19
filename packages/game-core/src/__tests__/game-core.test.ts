@@ -32,8 +32,11 @@ describe('simulateMatch', () => {
     const game = createNewGame();
     const result = simulateMatch(game.schedule[0], game.teams, 'test-seed');
 
-    expect(Math.max(result.homeRounds, result.awayRounds)).toBe(13);
-    expect(Math.min(result.homeRounds, result.awayRounds)).toBeLessThan(13);
+    const winnerRounds = Math.max(result.homeRounds, result.awayRounds);
+    const loserRounds = Math.min(result.homeRounds, result.awayRounds);
+    // First to 13, but overtime must be won by two — so never 13-12.
+    expect(winnerRounds).toBeGreaterThanOrEqual(13);
+    expect(winnerRounds - loserRounds).toBeGreaterThanOrEqual(2);
     expect(result.boxScore).toHaveLength(10);
     expect(result.seasonYear).toBe(1);
     expect(result.fixtureType).toBe('regular');

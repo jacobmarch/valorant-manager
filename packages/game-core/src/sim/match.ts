@@ -18,6 +18,8 @@ function teamRating(team: Team): number {
 
 function createBoxScore(team: Team, roundsWon: number, roundsLost: number, won: boolean, seed: string): PlayerMatchStat[] {
   const rng = createSeededRng(seed);
+  const totalRounds = roundsWon + roundsLost;
+
   return team.players.map((player) => {
     const rating =
       player.attributes.aim * 0.36 +
@@ -26,10 +28,21 @@ function createBoxScore(team: Team, roundsWon: number, roundsLost: number, won: 
       player.attributes.utility * 0.12 +
       player.attributes.consistency * 0.1 +
       player.attributes.communication * 0.08;
-    const variance = (rng.next() - 0.5) * 8;
-    const kills = clamp(Math.round(roundsWon * 1.15 + roundsLost * 0.35 + rating / 12 + variance), 4, 32);
-    const deaths = clamp(Math.round(roundsLost * 0.95 + roundsWon * 0.2 + (100 - player.attributes.consistency) / 15), 3, 28);
-    const assists = clamp(Math.round(roundsWon * 0.45 + player.attributes.utility / 18 + rng.next() * 5), 1, 18);
+
+    // Model performance as per-round rates so kills scale with match length.
+    // Skill shifts the rate, the winning side frags a little more, and a wide
+    // random swing keeps a roster from clustering around the same number.
+    const skillFactor = (rating - 55) * 0.006;
+    const killSwing = (rng.next() - 0.5) * 0.36;
+    const killsPerRound = 0.62 + skillFactor + (won ? 0.08 : 0) + killSwing;
+    const kills = clamp(Math.round(killsPerRound * totalRounds), 5, 33);
+
+    const consistencyFactor = (60 - player.attributes.consistency) * 0.002;
+    const deathSwing = (rng.next() - 0.5) * 0.2;
+    const deathsPerRound = 0.72 + (won ? -0.07 : 0.05) + consistencyFactor + deathSwing;
+    const deaths = clamp(Math.round(deathsPerRound * totalRounds), 5, 28);
+
+    const assists = clamp(Math.round(roundsWon * 0.4 + player.attributes.utility / 20 + rng.next() * 4), 1, 18);
     const acs = clamp(Math.round(kills * 10 + assists * 3 - deaths * 2 + (won ? 18 : 0)), 90, 420);
 
     return {
@@ -57,7 +70,12 @@ export function simulateMatch(fixture: Fixture, teams: Team[], seed = fixture.id
   let homeRounds = 0;
   let awayRounds = 0;
 
-  while (homeRounds < 13 && awayRounds < 13) {
+  // First to 13 wins. If the score reaches 12-12 the match goes to overtime,
+  // which must be won by two rounds (e.g. 14-12, 16-14) — never 13-12.
+  const isDecided = () =>
+    (homeRounds >= 13 || awayRounds >= 13) && Math.abs(homeRounds - awayRounds) >= 2;
+
+  while (!isDecided()) {
     const fatigueSwing = (rng.next() - 0.5) * 12;
     const clutchBoost = Math.max(homeRounds, awayRounds) >= 10 ? 3 : 0;
     const homeWinChance = clamp(0.5 + (homeRating - awayRating + fatigueSwing + clutchBoost) / 100, 0.18, 0.82);
