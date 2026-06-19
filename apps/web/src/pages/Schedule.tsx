@@ -1,57 +1,65 @@
 import { useState } from 'react';
-import type { Fixture } from '@valorant-manager/game-core';
+import type { Fixture, MatchResult } from '@valorant-manager/game-core';
 import { useGameStore } from '../store/useGameStore';
 import { teamName } from '../lib/stats';
 import { Card, Eyebrow, Pill } from '../components/ui';
 import { PlayoffBracket } from '../components/PlayoffBracket';
-
-const MATCHDAYS = 14;
+import { BoxScoreModal } from '../components/BoxScoreModal';
 
 export function Schedule() {
   const game = useGameStore((state) => state.game)!;
-  const [mineOnly, setMineOnly] = useState(false);
+  const [openResult, setOpenResult] = useState<MatchResult | null>(null);
+  const involvesUser = (fixture: Fixture) => fixture.homeTeamId === game.userTeamId || fixture.awayTeamId === game.userTeamId;
+
   const nextFixtureId = game.schedule.find(
-    (fixture) => !fixture.result && fixture.day >= game.currentDay && (fixture.homeTeamId === game.userTeamId || fixture.awayTeamId === game.userTeamId)
+    (fixture) => !fixture.result && fixture.day >= game.currentDay && involvesUser(fixture)
   )?.id;
 
-  const involvesUser = (fixture: Fixture) => fixture.homeTeamId === game.userTeamId || fixture.awayTeamId === game.userTeamId;
-  const regularFixtures = game.schedule.filter((fixture) => fixture.type === 'regular' && (!mineOnly || involvesUser(fixture)));
+  const userFixtures = game.schedule
+    .filter((fixture) => fixture.type === 'regular' && involvesUser(fixture))
+    .sort((a, b) => a.matchday - b.matchday);
+
   const playoffFixtures = game.schedule.filter((fixture) => fixture.type === 'playoff');
 
-  const renderFixture = (fixture: Fixture) => {
-    const isUser = involvesUser(fixture);
+  const renderRow = (fixture: Fixture) => {
+    const isHome = fixture.homeTeamId === game.userTeamId;
+    const opponentId = isHome ? fixture.awayTeamId : fixture.homeTeamId;
     const isNext = fixture.id === nextFixtureId;
+
     let status: { text: string; tone: 'win' | 'loss' | 'neutral' };
     if (fixture.result) {
       const userWon = fixture.result.winnerTeamId === game.userTeamId;
-      const tone = isUser ? (userWon ? 'win' : 'loss') : 'neutral';
-      status = { text: `${fixture.result.homeRounds}-${fixture.result.awayRounds}`, tone };
+      const userRounds = isHome ? fixture.result.homeRounds : fixture.result.awayRounds;
+      const oppRounds = isHome ? fixture.result.awayRounds : fixture.result.homeRounds;
+      status = { text: `${userRounds}-${oppRounds}`, tone: userWon ? 'win' : 'loss' };
     } else if (fixture.day < game.currentDay) {
-      status = { text: fixture.type === 'playoff' ? 'Pending' : 'Skipped', tone: 'neutral' };
+      status = { text: 'Skipped', tone: 'neutral' };
     } else {
       status = { text: 'Upcoming', tone: 'neutral' };
     }
     const statusColor = status.tone === 'win' ? 'text-positive' : status.tone === 'loss' ? 'text-negative' : 'text-faint';
+    const hasBoxScore = Boolean(fixture.result);
 
     return (
       <div
         key={fixture.id}
-        className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
-          isNext ? 'border-valorant/50 bg-valorant/10' : isUser ? 'border-valorant/20 bg-surface-2' : 'border-line bg-surface-2'
-        }`}
+        onClick={hasBoxScore ? () => setOpenResult(fixture.result!) : undefined}
+        role={hasBoxScore ? 'button' : undefined}
+        title={hasBoxScore ? 'View box score' : undefined}
+        className={`flex items-center gap-4 rounded-xl border px-4 py-3 ${
+          isNext ? 'border-valorant/50 bg-valorant/10' : 'border-line bg-surface-2'
+        } ${hasBoxScore ? 'cursor-pointer transition hover:border-valorant/40 hover:bg-surface-3' : ''}`}
       >
-        <div className="min-w-0">
-          {fixture.type === 'playoff' && (
-            <p className="text-[0.65rem] uppercase tracking-wider text-valorant">{fixture.playoffRound === 'final' ? 'Final' : 'Semifinal'}</p>
-          )}
+        <div className="flex h-10 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-surface-3">
+          <span className="text-[0.55rem] font-semibold uppercase tracking-wider text-faint">Week</span>
+          <span className="tnum text-base font-black leading-none">{fixture.matchday}</span>
+        </div>
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">
-            {fixture.homeSeed ? <span className="text-faint">#{fixture.homeSeed} </span> : ''}
-            {teamName(game, fixture.homeTeamId)}
-            <span className="text-faint"> vs </span>
-            {fixture.awaySeed ? <span className="text-faint">#{fixture.awaySeed} </span> : ''}
-            {teamName(game, fixture.awayTeamId)}
+            <span className="text-faint">{isHome ? 'vs' : '@'} </span>
+            {teamName(game, opponentId)}
           </p>
-          <p className="text-xs text-faint">Day {fixture.day}</p>
+          <p className="text-xs text-faint">{isHome ? 'Home' : 'Away'} · Day {fixture.day}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isNext && <Pill tone="accent">Next</Pill>}
@@ -63,47 +71,33 @@ export function Schedule() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <Eyebrow>Season {game.seasonYear}</Eyebrow>
-          <h1 className="mt-2 text-3xl font-black tracking-tight">Schedule</h1>
-          <p className="mt-1 text-sm text-muted">Double round-robin regular season, then playoffs.</p>
-        </div>
-        <button
-          onClick={() => setMineOnly((value) => !value)}
-          className={`rounded-xl border px-4 py-2.5 text-sm font-bold transition ${
-            mineOnly ? 'border-valorant/50 bg-valorant/15 text-valorant-bright' : 'border-border bg-surface-2 text-muted hover:text-ink'
-          }`}
-        >
-          {mineOnly ? '✓ My fixtures only' : 'My fixtures only'}
-        </button>
+      <div>
+        <Eyebrow>Season {game.seasonYear}</Eyebrow>
+        <h1 className="mt-2 text-3xl font-black tracking-tight">My Schedule</h1>
+        <p className="mt-1 text-sm text-muted">Your team plays one game per week through the regular season, then the playoffs.</p>
       </div>
 
-      <div className="space-y-4">
-        {Array.from({ length: MATCHDAYS }, (_, index) => index + 1).map((matchday) => {
-          const fixtures = regularFixtures.filter((fixture) => fixture.matchday === matchday);
-          if (fixtures.length === 0) {
-            return null;
-          }
-          return (
-            <Card key={matchday} className="p-5">
-              <h2 className="text-sm font-black uppercase tracking-wider text-muted">Matchday {matchday}</h2>
-              <div className="mt-3 grid gap-2.5 md:grid-cols-2">{fixtures.map(renderFixture)}</div>
-            </Card>
-          );
-        })}
+      <Card className="p-5">
+        <h2 className="text-sm font-black uppercase tracking-wider text-muted">Regular Season</h2>
+        {userFixtures.length === 0 ? (
+          <p className="mt-3 text-sm text-faint">No regular season games scheduled.</p>
+        ) : (
+          <div className="mt-3 space-y-2.5">{userFixtures.map(renderRow)}</div>
+        )}
+      </Card>
 
-        <Card className="p-5">
-          <h2 className="text-sm font-black uppercase tracking-wider text-muted">Playoffs</h2>
-          {playoffFixtures.length === 0 ? (
-            <p className="mt-3 text-sm text-faint">The playoff bracket appears after the regular season ends.</p>
-          ) : (
-            <div className="mt-4">
-              <PlayoffBracket game={game} />
-            </div>
-          )}
-        </Card>
-      </div>
+      <Card className="p-5">
+        <h2 className="text-sm font-black uppercase tracking-wider text-muted">Playoffs</h2>
+        {playoffFixtures.length === 0 ? (
+          <p className="mt-3 text-sm text-faint">The playoff bracket appears after the regular season ends.</p>
+        ) : (
+          <div className="mt-4">
+            <PlayoffBracket game={game} />
+          </div>
+        )}
+      </Card>
+
+      {openResult && <BoxScoreModal game={game} result={openResult} onClose={() => setOpenResult(null)} />}
     </section>
   );
 }
