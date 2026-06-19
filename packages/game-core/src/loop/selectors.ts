@@ -31,17 +31,17 @@ export function getStandings(teams: Team[], matchHistory: MatchResult[]): Standi
     home.roundsAgainst += result.awayRounds;
     away.roundsFor += result.awayRounds;
     away.roundsAgainst += result.homeRounds;
+    home.mapsFor += result.homeMaps;
+    home.mapsAgainst += result.awayMaps;
+    away.mapsFor += result.awayMaps;
+    away.mapsAgainst += result.homeMaps;
 
     if (result.winnerTeamId === result.homeTeamId) {
       home.wins += 1;
       away.losses += 1;
-      home.mapsFor += 1;
-      away.mapsAgainst += 1;
     } else {
       away.wins += 1;
       home.losses += 1;
-      away.mapsFor += 1;
-      home.mapsAgainst += 1;
     }
   }
 

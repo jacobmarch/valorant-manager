@@ -114,11 +114,11 @@ export function AroundLeague() {
                       <div className="mt-3 space-y-1.5 tnum">
                         <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${homeWon ? 'bg-positive/10 text-ink' : 'bg-surface-2 text-muted'}`}>
                           <span className="font-bold">{teamName(game, result.homeTeamId)}</span>
-                          <span className="text-lg font-black">{result.homeRounds}</span>
+                          <span className="text-lg font-black">{result.homeMaps}</span>
                         </div>
                         <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${!homeWon ? 'bg-positive/10 text-ink' : 'bg-surface-2 text-muted'}`}>
                           <span className="font-bold">{teamName(game, result.awayTeamId)}</span>
-                          <span className="text-lg font-black">{result.awayRounds}</span>
+                          <span className="text-lg font-black">{result.awayMaps}</span>
                         </div>
                       </div>
 

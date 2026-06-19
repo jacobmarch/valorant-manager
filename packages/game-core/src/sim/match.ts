@@ -1,5 +1,5 @@
-import type { Fixture, MatchResult, PlayerMatchStat, Team } from '../types/models';
-import { createSeededRng } from './rng';
+import type { Fixture, MapScore, MatchResult, PlayerMatchStat, Team } from '../types/models';
+import { createSeededRng, type Rng } from './rng';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -56,24 +56,13 @@ function createBoxScore(team: Team, roundsWon: number, roundsLost: number, won: 
   });
 }
 
-export function simulateMatch(fixture: Fixture, teams: Team[], seed = fixture.id): MatchResult {
-  const homeTeam = teams.find((team) => team.id === fixture.homeTeamId);
-  const awayTeam = teams.find((team) => team.id === fixture.awayTeamId);
-
-  if (!homeTeam || !awayTeam) {
-    throw new Error(`Cannot simulate fixture ${fixture.id}: team not found.`);
-  }
-
-  const rng = createSeededRng(seed);
-  const homeRating = teamRating(homeTeam);
-  const awayRating = teamRating(awayTeam);
+// Simulate a single map, round by round. First to 13 wins; reaching 12-12
+// forces overtime that must be won by two rounds (e.g. 14-12) — never 13-12.
+function simulateMap(homeRating: number, awayRating: number, rng: Rng): { homeRounds: number; awayRounds: number } {
   let homeRounds = 0;
   let awayRounds = 0;
 
-  // First to 13 wins. If the score reaches 12-12 the match goes to overtime,
-  // which must be won by two rounds (e.g. 14-12, 16-14) — never 13-12.
-  const isDecided = () =>
-    (homeRounds >= 13 || awayRounds >= 13) && Math.abs(homeRounds - awayRounds) >= 2;
+  const isDecided = () => (homeRounds >= 13 || awayRounds >= 13) && Math.abs(homeRounds - awayRounds) >= 2;
 
   while (!isDecided()) {
     const fatigueSwing = (rng.next() - 0.5) * 12;
@@ -87,9 +76,98 @@ export function simulateMatch(fixture: Fixture, teams: Team[], seed = fixture.id
     }
   }
 
-  const winnerTeamId = homeRounds > awayRounds ? homeTeam.id : awayTeam.id;
+  return { homeRounds, awayRounds };
+}
+
+// Aggregate the per-map box scores into one series box score: kills, deaths
+// and assists are summed, ACS is a round-weighted average across maps.
+function aggregateSeriesBoxScore(maps: MapScore[]): PlayerMatchStat[] {
+  const totals = new Map<
+    string,
+    { teamId: string; kills: number; deaths: number; assists: number; acsWeighted: number; rounds: number }
+  >();
+  const order: string[] = [];
+
+  for (const map of maps) {
+    const mapRounds = map.homeRounds + map.awayRounds;
+    for (const stat of map.boxScore) {
+      let acc = totals.get(stat.playerId);
+      if (!acc) {
+        acc = { teamId: stat.teamId, kills: 0, deaths: 0, assists: 0, acsWeighted: 0, rounds: 0 };
+        totals.set(stat.playerId, acc);
+        order.push(stat.playerId);
+      }
+      acc.kills += stat.kills;
+      acc.deaths += stat.deaths;
+      acc.assists += stat.assists;
+      acc.acsWeighted += stat.acs * mapRounds;
+      acc.rounds += mapRounds;
+    }
+  }
+
+  return order.map((playerId) => {
+    const acc = totals.get(playerId)!;
+    return {
+      playerId,
+      teamId: acc.teamId,
+      kills: acc.kills,
+      deaths: acc.deaths,
+      assists: acc.assists,
+      acs: acc.rounds > 0 ? Math.round(acc.acsWeighted / acc.rounds) : 0
+    };
+  });
+}
+
+// Maps needed to win the series: the playoff Grand Final is best-of-five
+// (first to 3), every other match is best-of-three (first to 2).
+function mapsToWin(fixture: Fixture): number {
+  return fixture.type === 'playoff' && fixture.playoffRound === 'final' ? 3 : 2;
+}
+
+export function simulateMatch(fixture: Fixture, teams: Team[], seed = fixture.id): MatchResult {
+  const homeTeam = teams.find((team) => team.id === fixture.homeTeamId);
+  const awayTeam = teams.find((team) => team.id === fixture.awayTeamId);
+
+  if (!homeTeam || !awayTeam) {
+    throw new Error(`Cannot simulate fixture ${fixture.id}: team not found.`);
+  }
+
+  const rng = createSeededRng(seed);
+  const homeRating = teamRating(homeTeam);
+  const awayRating = teamRating(awayTeam);
+  const target = mapsToWin(fixture);
+
+  const maps: MapScore[] = [];
+  let homeMaps = 0;
+  let awayMaps = 0;
+  let homeRounds = 0;
+  let awayRounds = 0;
+
+  while (homeMaps < target && awayMaps < target) {
+    const { homeRounds: mapHome, awayRounds: mapAway } = simulateMap(homeRating, awayRating, rng);
+    const homeWonMap = mapHome > mapAway;
+    const mapIndex = maps.length;
+
+    maps.push({
+      homeRounds: mapHome,
+      awayRounds: mapAway,
+      boxScore: [
+        ...createBoxScore(homeTeam, mapHome, mapAway, homeWonMap, `${seed}-home-m${mapIndex}`),
+        ...createBoxScore(awayTeam, mapAway, mapHome, !homeWonMap, `${seed}-away-m${mapIndex}`)
+      ]
+    });
+
+    homeRounds += mapHome;
+    awayRounds += mapAway;
+    if (homeWonMap) {
+      homeMaps += 1;
+    } else {
+      awayMaps += 1;
+    }
+  }
+
+  const winnerTeamId = homeMaps > awayMaps ? homeTeam.id : awayTeam.id;
   const winnerName = winnerTeamId === homeTeam.id ? homeTeam.name : awayTeam.name;
-  const homeWon = winnerTeamId === homeTeam.id;
 
   return {
     id: `result-${fixture.id}`,
@@ -101,13 +179,13 @@ export function simulateMatch(fixture: Fixture, teams: Team[], seed = fixture.id
     matchday: fixture.matchday,
     homeTeamId: homeTeam.id,
     awayTeamId: awayTeam.id,
+    homeMaps,
+    awayMaps,
     homeRounds,
     awayRounds,
+    maps,
     winnerTeamId,
-    boxScore: [
-      ...createBoxScore(homeTeam, homeRounds, awayRounds, homeWon, `${seed}-home`),
-      ...createBoxScore(awayTeam, awayRounds, homeRounds, !homeWon, `${seed}-away`)
-    ],
-    summary: `${homeTeam.name} ${homeRounds}-${awayRounds} ${awayTeam.name}. ${winnerName} wins.`
+    boxScore: aggregateSeriesBoxScore(maps),
+    summary: `${homeTeam.name} ${homeMaps}-${awayMaps} ${awayTeam.name}. ${winnerName} wins.`
   };
 }

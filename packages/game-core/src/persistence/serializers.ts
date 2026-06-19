@@ -15,6 +15,41 @@ export function serializeGameState(state: GameState): string {
   return JSON.stringify(state);
 }
 
+// Backfill the series fields (maps / homeMaps / awayMaps) for results saved
+// before matches became best-of-N. Such results recorded a single map's rounds,
+// so we treat that score as a one-map series.
+function normalizeMatchResult(result: MatchResult): MatchResult {
+  if (Array.isArray(result.maps) && typeof result.homeMaps === 'number' && typeof result.awayMaps === 'number') {
+    return result;
+  }
+
+  const boxScore = result.boxScore ?? [];
+  const homeRounds = result.homeRounds ?? 0;
+  const awayRounds = result.awayRounds ?? 0;
+  const homeWon = homeRounds >= awayRounds;
+
+  return {
+    ...result,
+    homeMaps: result.homeMaps ?? (homeWon ? 1 : 0),
+    awayMaps: result.awayMaps ?? (homeWon ? 0 : 1),
+    boxScore,
+    maps: result.maps ?? [{ homeRounds, awayRounds, boxScore }]
+  };
+}
+
+function normalizeMatchResults(state: GameState): GameState {
+  const matchHistory = state.matchHistory.map(normalizeMatchResult);
+  return {
+    ...state,
+    schedule: state.schedule.map((fixture) =>
+      fixture.result ? { ...fixture, result: normalizeMatchResult(fixture.result) } : fixture
+    ),
+    matchHistory,
+    // Recompute so the maps-for/against columns match the backfilled results.
+    standings: getStandings(state.teams, matchHistory)
+  };
+}
+
 export function deserializeGameState(serialized: string): GameState {
   const parsed = JSON.parse(serialized) as Partial<GameState> & { version?: number };
 
@@ -23,11 +58,11 @@ export function deserializeGameState(serialized: string): GameState {
   }
 
   if (parsed.version === 2) {
-    return parsed as GameState;
+    return normalizeMatchResults(parsed as GameState);
   }
 
   if (parsed.version === 1) {
-    return migrateVersionOneSave(parsed as unknown as LegacyGameState);
+    return normalizeMatchResults(migrateVersionOneSave(parsed as unknown as LegacyGameState));
   }
 
   throw new Error('Invalid Valorant Manager save file.');

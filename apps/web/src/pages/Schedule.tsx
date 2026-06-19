@@ -29,9 +29,9 @@ export function Schedule() {
     let status: { text: string; tone: 'win' | 'loss' | 'neutral' };
     if (fixture.result) {
       const userWon = fixture.result.winnerTeamId === game.userTeamId;
-      const userRounds = isHome ? fixture.result.homeRounds : fixture.result.awayRounds;
-      const oppRounds = isHome ? fixture.result.awayRounds : fixture.result.homeRounds;
-      status = { text: `${userRounds}-${oppRounds}`, tone: userWon ? 'win' : 'loss' };
+      const userMaps = isHome ? fixture.result.homeMaps : fixture.result.awayMaps;
+      const oppMaps = isHome ? fixture.result.awayMaps : fixture.result.homeMaps;
+      status = { text: `${userMaps}-${oppMaps}`, tone: userWon ? 'win' : 'loss' };
     } else if (fixture.day < game.currentDay) {
       status = { text: 'Skipped', tone: 'neutral' };
     } else {

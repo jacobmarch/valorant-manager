@@ -180,9 +180,9 @@ export function Dashboard() {
                 <div className="flex items-center gap-3">
                   <Pill tone={lastWin ? 'positive' : 'negative'}>{lastWin ? 'Win' : 'Loss'}</Pill>
                   <p className="tnum text-lg font-black">
-                    {teamShort(game, lastResult.homeTeamId)} {lastResult.homeRounds}
+                    {teamShort(game, lastResult.homeTeamId)} {lastResult.homeMaps}
                     <span className="text-faint"> – </span>
-                    {lastResult.awayRounds} {teamShort(game, lastResult.awayTeamId)}
+                    {lastResult.awayMaps} {teamShort(game, lastResult.awayTeamId)}
                   </p>
                 </div>
                 <p className="text-sm text-muted">{lastResult.summary}</p>
@@ -266,7 +266,7 @@ export function Dashboard() {
                 <div className="mt-2">
                   {outcome ? (
                     <span className={`tnum text-sm font-black ${outcome === 'W' ? 'text-positive' : 'text-negative'}`}>
-                      {outcome} {fixture.result!.homeRounds}-{fixture.result!.awayRounds}
+                      {outcome} {fixture.result!.homeMaps}-{fixture.result!.awayMaps}
                     </span>
                   ) : isUpcomingNext ? (
                     <Pill tone="accent">Next</Pill>
@@ -326,7 +326,7 @@ export function Dashboard() {
               <div key={result.id} className="rounded-xl border border-line bg-surface-2 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="tnum text-sm font-bold">
-                    {teamShort(game, result.homeTeamId)} {result.homeRounds}-{result.awayRounds} {teamShort(game, result.awayTeamId)}
+                    {teamShort(game, result.homeTeamId)} {result.homeMaps}-{result.awayMaps} {teamShort(game, result.awayTeamId)}
                   </p>
                   <span className="text-[0.65rem] uppercase tracking-wider text-faint">D{result.day}</span>
                 </div>

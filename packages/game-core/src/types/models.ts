@@ -55,6 +55,13 @@ export interface Fixture {
   result?: MatchResult;
 }
 
+export interface MapScore {
+  homeRounds: number;
+  awayRounds: number;
+  /** Box score for this individual map (both teams). */
+  boxScore: PlayerMatchStat[];
+}
+
 export interface MatchResult {
   id: string;
   fixtureId: FixtureId;
@@ -65,9 +72,16 @@ export interface MatchResult {
   matchday: number;
   homeTeamId: TeamId;
   awayTeamId: TeamId;
+  /** Maps won in the series (the headline score, e.g. 2-1). */
+  homeMaps: number;
+  awayMaps: number;
+  /** Total rounds won across every map in the series. */
   homeRounds: number;
   awayRounds: number;
+  /** Per-map round scores, in the order they were played. */
+  maps: MapScore[];
   winnerTeamId: TeamId;
+  /** Box score aggregated across every map in the series. */
   boxScore: PlayerMatchStat[];
   summary: string;
 }

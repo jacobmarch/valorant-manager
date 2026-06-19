@@ -1,20 +1,21 @@
-import { getNextUserFixture } from '@valorant-manager/game-core';
+import { useState } from 'react';
+import { getNextUserFixture, type MatchResult } from '@valorant-manager/game-core';
 import { useGameStore } from '../store/useGameStore';
-import { getTeamForm, getTeamOverall, teamById } from '../lib/stats';
+import { getTeamForm, getTeamOverall, teamById, teamName } from '../lib/stats';
 import { Button, Card, Eyebrow, FormStreak, Pill } from '../components/ui';
+import { BoxScoreModal } from '../components/BoxScoreModal';
 
 export function MatchScreen() {
   const game = useGameStore((state) => state.game)!;
   const advanceDay = useGameStore((state) => state.advanceDay);
   const setScreen = useGameStore((state) => state.setScreen);
+  const [openResult, setOpenResult] = useState<MatchResult | null>(null);
   const fixture = getNextUserFixture(game);
   const teamsById = new Map(game.teams.map((team) => [team.id, team]));
-  const playersById = new Map(game.teams.flatMap((team) => team.players).map((player) => [player.id, player]));
   const isToday = fixture?.day === game.currentDay;
   const championTeam = game.playoffBracket?.championTeamId ? teamsById.get(game.playoffBracket.championTeamId) : undefined;
-  const latestUserResult = [...game.matchHistory]
-    .reverse()
-    .find((result) => result.homeTeamId === game.userTeamId || result.awayTeamId === game.userTeamId);
+  const lastResultForTeam = (teamId: string) =>
+    [...game.matchHistory].reverse().find((result) => result.homeTeamId === teamId || result.awayTeamId === teamId);
 
   if (!fixture) {
     return (
@@ -114,47 +115,64 @@ export function MatchScreen() {
       </Card>
 
       <Card className="p-5">
-        <h2 className="text-base font-black">Latest Result</h2>
-        {latestUserResult ? (
-          <div className="mt-4">
-            <p className="text-sm font-bold text-muted">{latestUserResult.summary}</p>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[460px] text-sm tnum">
-                <thead>
-                  <tr className="text-left text-[0.65rem] uppercase tracking-wider text-faint">
-                    <th className="pb-2 font-semibold">Player</th>
-                    <th className="pb-2 font-semibold">Team</th>
-                    <th className="pb-2 text-center font-semibold">K</th>
-                    <th className="pb-2 text-center font-semibold">D</th>
-                    <th className="pb-2 text-center font-semibold">A</th>
-                    <th className="pb-2 text-right font-semibold">ACS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...latestUserResult.boxScore]
-                    .sort((a, b) => b.acs - a.acs)
-                    .map((stat) => {
-                      const player = playersById.get(stat.playerId);
-                      const isUserTeam = stat.teamId === game.userTeamId;
-                      return (
-                        <tr key={stat.playerId} className={`border-t border-line ${isUserTeam ? 'bg-valorant/5' : ''}`}>
-                          <td className="py-2 font-bold">{player?.handle}</td>
-                          <td className="py-2 text-xs text-faint">{teamsById.get(stat.teamId)?.shortName}</td>
-                          <td className="py-2 text-center">{stat.kills}</td>
-                          <td className="py-2 text-center">{stat.deaths}</td>
-                          <td className="py-2 text-center">{stat.assists}</td>
-                          <td className="py-2 text-right font-black">{stat.acs}</td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-4 text-muted">No user match has been played yet.</p>
-        )}
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-black">Last Time Out</h2>
+          <span className="text-xs text-faint">Tap a result for the full box score</span>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[home.id, away.id].map((teamId) => {
+            const result = lastResultForTeam(teamId);
+            const team = teamById(game, teamId)!;
+            if (!result) {
+              return (
+                <div key={teamId} className="rounded-xl border border-line bg-surface-2 p-4">
+                  <p className="font-bold">{team.name}</p>
+                  <p className="mt-1 text-sm text-faint">No matches played yet.</p>
+                </div>
+              );
+            }
+            const isHome = result.homeTeamId === teamId;
+            const teamMaps = (isHome ? result.homeMaps : result.awayMaps) ?? 0;
+            const oppMaps = (isHome ? result.awayMaps : result.homeMaps) ?? 0;
+            const oppId = isHome ? result.awayTeamId : result.homeTeamId;
+            const won = result.winnerTeamId === teamId;
+            const label =
+              result.fixtureType === 'playoff'
+                ? result.playoffRound === 'final'
+                  ? 'Playoff Final'
+                  : 'Playoff Semifinal'
+                : `Week ${result.matchday}`;
+            return (
+              <button
+                key={teamId}
+                onClick={() => setOpenResult(result)}
+                className="flex flex-col gap-2 rounded-xl border border-line bg-surface-2 p-4 text-left transition hover:border-valorant/50 hover:bg-surface-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-bold">{team.name}</span>
+                  <Pill tone={won ? 'positive' : 'negative'}>{won ? 'W' : 'L'}</Pill>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="tnum text-2xl font-black">
+                    {teamMaps}-{oppMaps}
+                  </span>
+                  <span className="truncate text-sm text-muted">
+                    {won ? 'def.' : 'lost to'} {teamName(game, oppId)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[0.65rem] uppercase tracking-wider text-faint">
+                  <span>
+                    {label} · Day {result.day}
+                  </span>
+                  <span className="text-valorant-bright">View box score →</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </Card>
+
+      {openResult && <BoxScoreModal game={game} result={openResult} onClose={() => setOpenResult(null)} />}
     </section>
   );
 }

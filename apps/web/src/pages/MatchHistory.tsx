@@ -44,9 +44,9 @@ export function MatchHistory() {
                     {result.fixtureType === 'playoff' ? (result.playoffRound === 'final' ? 'Final' : 'Semifinal') : `MD ${result.matchday}`}
                   </Pill>
                   <h2 className="tnum text-xl font-black">
-                    {teamsById.get(result.homeTeamId)?.shortName} {result.homeRounds}
+                    {teamsById.get(result.homeTeamId)?.shortName} {result.homeMaps}
                     <span className="text-faint"> – </span>
-                    {result.awayRounds} {teamsById.get(result.awayTeamId)?.shortName}
+                    {result.awayMaps} {teamsById.get(result.awayTeamId)?.shortName}
                   </h2>
                 </div>
                 <div className="text-right">

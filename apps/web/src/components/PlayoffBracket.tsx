@@ -5,8 +5,8 @@ import { Pill } from './ui';
 function BracketMatch({ game, fixture }: { game: GameState; fixture: Fixture }) {
   const winnerId = fixture.result?.winnerTeamId;
   const rows = [
-    { teamId: fixture.homeTeamId, seed: fixture.homeSeed, rounds: fixture.result?.homeRounds },
-    { teamId: fixture.awayTeamId, seed: fixture.awaySeed, rounds: fixture.result?.awayRounds }
+    { teamId: fixture.homeTeamId, seed: fixture.homeSeed, maps: fixture.result?.homeMaps },
+    { teamId: fixture.awayTeamId, seed: fixture.awaySeed, maps: fixture.result?.awayMaps }
   ];
 
   return (
@@ -28,7 +28,7 @@ function BracketMatch({ game, fixture }: { game: GameState; fixture: Fixture }) 
                 {row.seed ? <span className="text-faint">#{row.seed} </span> : ''}
                 {teamName(game, row.teamId)}
               </span>
-              <span className="tnum font-black">{row.rounds ?? '–'}</span>
+              <span className="tnum font-black">{row.maps ?? '–'}</span>
             </div>
           );
         })}

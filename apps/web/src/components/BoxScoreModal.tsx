@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import type { GameState, MatchResult } from '@valorant-manager/game-core';
+import { useEffect, useState } from 'react';
+import type { GameState, MatchResult, PlayerMatchStat } from '@valorant-manager/game-core';
 import { teamName } from '../lib/stats';
 import { Pill } from './ui';
 
@@ -10,7 +10,12 @@ function resultLabel(result: MatchResult) {
   return `Week ${result.matchday}`;
 }
 
+// -1 represents the aggregated "All Maps" view; 0+ is an individual map index.
+const ALL_MAPS = -1;
+
 export function BoxScoreModal({ game, result, onClose }: { game: GameState; result: MatchResult; onClose: () => void }) {
+  const [tab, setTab] = useState<number>(ALL_MAPS);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -26,13 +31,35 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
 
   const loserTeamId = result.winnerTeamId === result.homeTeamId ? result.awayTeamId : result.homeTeamId;
   const orderedTeamIds = [result.winnerTeamId, loserTeamId];
-  const roundsFor = (teamId: string) => (teamId === result.homeTeamId ? result.homeRounds : result.awayRounds);
 
-  const TeamBoxScore = ({ teamId }: { teamId: string }) => {
+  // Guard against legacy results saved before per-map data existed.
+  const maps = result.maps ?? [];
+  const homeMaps = result.homeMaps ?? ((result.homeRounds ?? 0) >= (result.awayRounds ?? 0) ? 1 : 0);
+  const awayMaps = result.awayMaps ?? ((result.awayRounds ?? 0) > (result.homeRounds ?? 0) ? 1 : 0);
+
+  const activeMap = tab === ALL_MAPS ? undefined : maps[tab];
+  const boxScore = (activeMap ? activeMap.boxScore : result.boxScore) ?? [];
+
+  // Score shown next to each team: series maps on "All Maps", map rounds otherwise.
+  const teamScore = (teamId: string) => {
+    if (!activeMap) {
+      return teamId === result.homeTeamId ? homeMaps : awayMaps;
+    }
+    return teamId === result.homeTeamId ? activeMap.homeRounds : activeMap.awayRounds;
+  };
+
+  const isWinner = (teamId: string) => {
+    if (!activeMap) {
+      return teamId === result.winnerTeamId;
+    }
+    const mapWinnerId = activeMap.homeRounds > activeMap.awayRounds ? result.homeTeamId : result.awayTeamId;
+    return teamId === mapWinnerId;
+  };
+
+  const TeamBoxScore = ({ teamId, stats }: { teamId: string; stats: PlayerMatchStat[] }) => {
     const team = teamsById.get(teamId);
     const isUserTeam = teamId === game.userTeamId;
-    const isWinner = teamId === result.winnerTeamId;
-    const stats = result.boxScore.filter((stat) => stat.teamId === teamId).sort((a, b) => b.acs - a.acs);
+    const sorted = [...stats].sort((a, b) => b.acs - a.acs);
 
     return (
       <div className={`rounded-xl border ${isUserTeam ? 'border-valorant/30' : 'border-line'} bg-surface-2`}>
@@ -43,9 +70,9 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
               style={{ background: team ? `linear-gradient(${team.colors.primary}, ${team.colors.secondary})` : undefined }}
             />
             <span className="font-black">{teamName(game, teamId)}</span>
-            {isWinner && <Pill tone="positive">Win</Pill>}
+            {isWinner(teamId) && <Pill tone="positive">Win</Pill>}
           </div>
-          <span className="tnum text-2xl font-black">{roundsFor(teamId)}</span>
+          <span className="tnum text-2xl font-black">{teamScore(teamId)}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[380px] text-sm tnum">
@@ -59,7 +86,7 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
               </tr>
             </thead>
             <tbody>
-              {stats.map((stat) => {
+              {sorted.map((stat) => {
                 const player = playersById.get(stat.playerId);
                 return (
                   <tr key={stat.playerId} className="border-t border-line">
@@ -78,6 +105,11 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
     );
   };
 
+  const tabClass = (active: boolean) =>
+    `shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+      active ? 'bg-valorant text-white' : 'bg-surface-2 text-muted hover:text-ink'
+    }`;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:items-center"
@@ -91,9 +123,16 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
           <div>
             <Pill tone={result.fixtureType === 'playoff' ? 'gold' : 'neutral'}>{resultLabel(result)}</Pill>
             <h2 className="mt-2 tnum text-xl font-black">
-              {teamName(game, result.homeTeamId)} <span className="text-faint">{result.homeRounds} – {result.awayRounds}</span> {teamName(game, result.awayTeamId)}
+              {teamName(game, result.homeTeamId)} <span className="text-faint">{homeMaps} – {awayMaps}</span> {teamName(game, result.awayTeamId)}
             </h2>
-            <p className="mt-0.5 text-xs text-faint">Day {result.day}</p>
+            <p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-faint">
+              <span>Day {result.day}</span>
+              {maps.map((map, index) => (
+                <span key={index} className="tnum">
+                  · Map {index + 1} {map.homeRounds}-{map.awayRounds}
+                </span>
+              ))}
+            </p>
           </div>
           <button
             type="button"
@@ -105,10 +144,22 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
           </button>
         </div>
 
+        <div className="flex gap-2 overflow-x-auto border-b border-line px-5 py-3">
+          <button type="button" className={tabClass(tab === ALL_MAPS)} onClick={() => setTab(ALL_MAPS)}>
+            All Maps
+          </button>
+          {maps.map((map, index) => (
+            <button key={index} type="button" className={tabClass(tab === index)} onClick={() => setTab(index)}>
+              Map {index + 1}
+              <span className="ml-1.5 tnum text-faint">{map.homeRounds}-{map.awayRounds}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-4 p-5">
-          {result.summary && <p className="text-sm text-muted">{result.summary}</p>}
+          {tab === ALL_MAPS && result.summary && <p className="text-sm text-muted">{result.summary}</p>}
           {orderedTeamIds.map((teamId) => (
-            <TeamBoxScore key={teamId} teamId={teamId} />
+            <TeamBoxScore key={teamId} teamId={teamId} stats={boxScore.filter((stat) => stat.teamId === teamId)} />
           ))}
         </div>
       </div>

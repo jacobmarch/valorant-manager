@@ -28,18 +28,46 @@ describe('createNewGame', () => {
 });
 
 describe('simulateMatch', () => {
-  it('returns a valid first-to-13 match result for a fixture', () => {
+  it('returns a valid best-of-three series result for a regular fixture', () => {
     const game = createNewGame();
     const result = simulateMatch(game.schedule[0], game.teams, 'test-seed');
 
-    const winnerRounds = Math.max(result.homeRounds, result.awayRounds);
-    const loserRounds = Math.min(result.homeRounds, result.awayRounds);
-    // First to 13, but overtime must be won by two — so never 13-12.
-    expect(winnerRounds).toBeGreaterThanOrEqual(13);
-    expect(winnerRounds - loserRounds).toBeGreaterThanOrEqual(2);
+    const winnerMaps = Math.max(result.homeMaps, result.awayMaps);
+    const loserMaps = Math.min(result.homeMaps, result.awayMaps);
+    // Best of three: first to two maps, so two or three maps are played.
+    expect(winnerMaps).toBe(2);
+    expect(loserMaps).toBeLessThanOrEqual(1);
+    expect(result.maps.length).toBe(winnerMaps + loserMaps);
+    expect(result.maps.length).toBeGreaterThanOrEqual(2);
+    expect(result.maps.length).toBeLessThanOrEqual(3);
+
+    // Every map is first-to-13, and overtime must be won by two — never 13-12.
+    for (const map of result.maps) {
+      const winnerRounds = Math.max(map.homeRounds, map.awayRounds);
+      const loserRounds = Math.min(map.homeRounds, map.awayRounds);
+      expect(winnerRounds).toBeGreaterThanOrEqual(13);
+      expect(winnerRounds - loserRounds).toBeGreaterThanOrEqual(2);
+      // Each map carries its own full box score for both teams.
+      expect(map.boxScore).toHaveLength(10);
+    }
+
+    // Total rounds equal the sum across maps.
+    expect(result.homeRounds).toBe(result.maps.reduce((total, map) => total + map.homeRounds, 0));
+    expect(result.awayRounds).toBe(result.maps.reduce((total, map) => total + map.awayRounds, 0));
+
     expect(result.boxScore).toHaveLength(10);
     expect(result.seasonYear).toBe(1);
     expect(result.fixtureType).toBe('regular');
+  });
+
+  it('plays the playoff grand final as a best-of-five', () => {
+    const game = createNewGame();
+    const finalFixture = { ...game.schedule[0], type: 'playoff' as const, playoffRound: 'final' as const };
+    const result = simulateMatch(finalFixture, game.teams, 'final-seed');
+
+    expect(Math.max(result.homeMaps, result.awayMaps)).toBe(3);
+    expect(result.maps.length).toBeGreaterThanOrEqual(3);
+    expect(result.maps.length).toBeLessThanOrEqual(5);
   });
 });
 
@@ -52,7 +80,12 @@ describe('advanceDay', () => {
     expect(next.matchHistory).toHaveLength(4);
     expect(next.schedule.filter((fixture) => fixture.day === 1 && fixture.result)).toHaveLength(4);
     expect(next.standings.reduce((played, row) => played + row.played, 0)).toBe(8);
-    expect(next.standings.every((row) => row.mapDiff === row.wins - row.losses)).toBe(true);
+    expect(next.standings.every((row) => row.played === row.wins + row.losses)).toBe(true);
+    expect(next.standings.every((row) => row.mapDiff === row.mapsFor - row.mapsAgainst)).toBe(true);
+    // Maps won by one side are maps lost by the other, so the ledger balances.
+    expect(next.standings.reduce((total, row) => total + row.mapsFor, 0)).toBe(
+      next.standings.reduce((total, row) => total + row.mapsAgainst, 0)
+    );
     expect(getStandings(next.teams, next.matchHistory)).toEqual(next.standings);
   });
 });
