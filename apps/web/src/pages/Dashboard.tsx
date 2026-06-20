@@ -8,6 +8,7 @@ import {
   type MatchResult,
   type StandingsRow
 } from '@valorant-manager/game-core';
+import { useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import {
   getPlayerOverall,
@@ -21,6 +22,7 @@ import {
 } from '../lib/stats';
 import { Button, Card, Diff, Eyebrow, FormStreak, PanelHeader, Pill, StatTile } from '../components/ui';
 import { PlayoffBracket } from '../components/PlayoffBracket';
+import { BoxScoreModal } from '../components/BoxScoreModal';
 
 function standingOf(game: GameState, teamId: string): StandingsRow | undefined {
   return game.standings.find((row) => row.teamId === teamId);
@@ -67,6 +69,7 @@ export function Dashboard() {
   const game = useGameStore((state) => state.game)!;
   const advanceDay = useGameStore((state) => state.advanceDay);
   const setScreen = useGameStore((state) => state.setScreen);
+  const [openResult, setOpenResult] = useState<MatchResult | null>(null);
 
   const userTeam = teamById(game, game.userTeamId)!;
   const userStanding = standingOf(game, game.userTeamId);
@@ -176,7 +179,10 @@ export function Dashboard() {
           {lastResult && (
             <div className="mt-4">
               <PanelHeader title="Last Result" subtitle={`${resultLabel(lastResult)} · Day ${lastResult.day}`} action="History" onAction={() => setScreen('history')} />
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3">
+              <button
+                onClick={() => setOpenResult(lastResult)}
+                className="mt-3 flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3 text-left transition hover:border-valorant/50 hover:bg-surface-3"
+              >
                 <div className="flex items-center gap-3">
                   <Pill tone={lastWin ? 'positive' : 'negative'}>{lastWin ? 'Win' : 'Loss'}</Pill>
                   <p className="tnum text-lg font-black">
@@ -186,7 +192,7 @@ export function Dashboard() {
                   </p>
                 </div>
                 <p className="text-sm text-muted">{lastResult.summary}</p>
-              </div>
+              </button>
             </div>
           )}
         </Card>
@@ -236,7 +242,7 @@ export function Dashboard() {
         <Card className="p-5">
           <PanelHeader title="Playoff Bracket" subtitle={`Season ${game.seasonYear} postseason`} action="Schedule" onAction={() => setScreen('schedule')} />
           <div className="mt-4">
-            <PlayoffBracket game={game} />
+            <PlayoffBracket game={game} onSelectResult={setOpenResult} />
           </div>
         </Card>
       )}
@@ -252,12 +258,16 @@ export function Dashboard() {
             if (fixture.result) {
               outcome = fixture.result.winnerTeamId === game.userTeamId ? 'W' : 'L';
             }
+            const hasBoxScore = Boolean(fixture.result);
             return (
               <div
                 key={fixture.id}
+                onClick={hasBoxScore ? () => setOpenResult(fixture.result!) : undefined}
+                role={hasBoxScore ? 'button' : undefined}
+                title={hasBoxScore ? 'View box score' : undefined}
                 className={`min-w-[9.5rem] shrink-0 rounded-xl border p-3 ${
                   isUpcomingNext ? 'border-valorant/50 bg-valorant/10' : 'border-line bg-surface-2'
-                }`}
+                } ${hasBoxScore ? 'cursor-pointer transition hover:border-valorant/40 hover:bg-surface-3' : ''}`}
               >
                 <p className="text-[0.65rem] uppercase tracking-wider text-faint">{fixtureLabel(fixture)} · D{fixture.day}</p>
                 <p className="mt-1 text-sm font-bold">
@@ -323,7 +333,11 @@ export function Dashboard() {
           <div className="mt-4 space-y-2">
             {recentLeague.length === 0 && <p className="text-sm text-muted">No matches played yet.</p>}
             {recentLeague.map((result) => (
-              <div key={result.id} className="rounded-xl border border-line bg-surface-2 px-3 py-2.5">
+              <button
+                key={result.id}
+                onClick={() => setOpenResult(result)}
+                className="block w-full rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-left transition hover:border-valorant/50 hover:bg-surface-3"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <p className="tnum text-sm font-bold">
                     {teamShort(game, result.homeTeamId)} {result.homeMaps}-{result.awayMaps} {teamShort(game, result.awayTeamId)}
@@ -331,11 +345,13 @@ export function Dashboard() {
                   <span className="text-[0.65rem] uppercase tracking-wider text-faint">D{result.day}</span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted">{teamName(game, result.winnerTeamId)} win</p>
-              </div>
+              </button>
             ))}
           </div>
         </Card>
       </div>
+
+      {openResult && <BoxScoreModal game={game} result={openResult} onClose={() => setOpenResult(null)} />}
     </section>
   );
 }

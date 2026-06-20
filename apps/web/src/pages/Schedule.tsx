@@ -92,7 +92,7 @@ export function Schedule() {
           <p className="mt-3 text-sm text-faint">The playoff bracket appears after the regular season ends.</p>
         ) : (
           <div className="mt-4">
-            <PlayoffBracket game={game} />
+            <PlayoffBracket game={game} onSelectResult={setOpenResult} />
           </div>
         )}
       </Card>

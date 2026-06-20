@@ -1,16 +1,32 @@
-import { getPlayoffFixtures, type Fixture, type GameState } from '@valorant-manager/game-core';
+import { getPlayoffFixtures, type Fixture, type GameState, type MatchResult } from '@valorant-manager/game-core';
 import { teamName } from '../lib/stats';
 import { Pill } from './ui';
 
-function BracketMatch({ game, fixture }: { game: GameState; fixture: Fixture }) {
+function BracketMatch({
+  game,
+  fixture,
+  onSelectResult
+}: {
+  game: GameState;
+  fixture: Fixture;
+  onSelectResult?: (result: MatchResult) => void;
+}) {
   const winnerId = fixture.result?.winnerTeamId;
   const rows = [
     { teamId: fixture.homeTeamId, seed: fixture.homeSeed, maps: fixture.result?.homeMaps },
     { teamId: fixture.awayTeamId, seed: fixture.awaySeed, maps: fixture.result?.awayMaps }
   ];
+  const clickable = Boolean(fixture.result && onSelectResult);
 
   return (
-    <div className="rounded-xl border border-line bg-surface-2 p-2.5">
+    <div
+      onClick={clickable ? () => onSelectResult!(fixture.result!) : undefined}
+      role={clickable ? 'button' : undefined}
+      title={clickable ? 'View box score' : undefined}
+      className={`rounded-xl border border-line bg-surface-2 p-2.5 ${
+        clickable ? 'cursor-pointer transition hover:border-valorant/50' : ''
+      }`}
+    >
       <p className="mb-2 text-[0.65rem] uppercase tracking-wider text-faint">
         {fixture.playoffRound === 'final' ? 'Final' : 'Semifinal'} · Day {fixture.day}
       </p>
@@ -37,7 +53,13 @@ function BracketMatch({ game, fixture }: { game: GameState; fixture: Fixture }) 
   );
 }
 
-export function PlayoffBracket({ game }: { game: GameState }) {
+export function PlayoffBracket({
+  game,
+  onSelectResult
+}: {
+  game: GameState;
+  onSelectResult?: (result: MatchResult) => void;
+}) {
   const semifinals = getPlayoffFixtures(game, 'semifinal');
   const finals = getPlayoffFixtures(game, 'final');
   const championId = game.playoffBracket?.championTeamId;
@@ -56,7 +78,7 @@ export function PlayoffBracket({ game }: { game: GameState }) {
           <div className="space-y-2">
             {semifinals.length === 0 && <p className="text-sm text-faint">Set after the regular season.</p>}
             {semifinals.map((fixture) => (
-              <BracketMatch key={fixture.id} game={game} fixture={fixture} />
+              <BracketMatch key={fixture.id} game={game} fixture={fixture} onSelectResult={onSelectResult} />
             ))}
           </div>
         </div>
@@ -65,7 +87,7 @@ export function PlayoffBracket({ game }: { game: GameState }) {
           <div className="space-y-2">
             {finals.length === 0 && <p className="text-sm text-faint">Set after semifinals.</p>}
             {finals.map((fixture) => (
-              <BracketMatch key={fixture.id} game={game} fixture={fixture} />
+              <BracketMatch key={fixture.id} game={game} fixture={fixture} onSelectResult={onSelectResult} />
             ))}
           </div>
         </div>
