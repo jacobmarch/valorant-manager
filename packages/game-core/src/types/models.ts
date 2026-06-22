@@ -3,6 +3,7 @@ export type PlayerId = string;
 export type FixtureId = string;
 
 export type PlayerRole = 'duelist' | 'initiator' | 'controller' | 'sentinel' | 'flex';
+export type Region = 'Americas' | 'EMEA' | 'Pacific' | 'China';
 export type SeasonPhase = 'regularSeason' | 'playoffs' | 'seasonReview';
 export type FixtureType = 'regular' | 'playoff';
 export type PlayoffRound = 'semifinal' | 'final';
@@ -33,7 +34,7 @@ export interface Team {
   id: TeamId;
   name: string;
   shortName: string;
-  city: string;
+  region: Region;
   colors: {
     primary: string;
     secondary: string;

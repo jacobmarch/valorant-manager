@@ -4,6 +4,7 @@ export { createNewGame } from './gen/new-game';
 export { createFinalFixture, createPlayoffBracket, createSemifinalFixtures } from './gen/playoffs';
 export { createDoubleRoundRobinSchedule } from './gen/schedule';
 export { advanceDay } from './loop/advance-day';
+export { retirementChance, runOffseason } from './loop/offseason';
 export { getCurrentPhaseLabel, getNextUserFixture, getPlayoffFixtures, getRecentResults, getSeasonChampion, getStandings } from './loop/selectors';
 export { deserializeGameState, serializeGameState } from './persistence/serializers';
 export { simulateMatch } from './sim/match';

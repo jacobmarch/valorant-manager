@@ -28,15 +28,21 @@ flowchart LR
 - `SeasonPhase`, `PlayoffBracket`, `SeasonSummary`: multi-season flow.
 
 `packages/game-core/src/gen/new-game.ts` creates a fresh career:
-- 8 fictional teams.
-- 5 players per team.
+- The 12 VCT Americas teams.
+- 5 players per team, with randomly generated attributes/ages/names each save.
 - Season 1, regular season phase.
 - Initial double round-robin schedule.
 
+`packages/game-core/src/data/sample-league.ts` defines the league:
+- 12 real VCT Americas team identities (100T, C9, EG, Envy, FURIA, G2, KRÜ, LEV, LOUD, MIBR, NRG, SEN), each tagged with the `Americas` region.
+- Only the team names/colors are fixed; every player (handle, real name, attributes, age) is generated per save from a seed.
+- `createSampleTeams(seed)` is deterministic for a given seed, so the new-game screen can preview the exact league the career will use.
+- Future regions (EMEA, Pacific, China) can be added as additional leagues.
+
 `packages/game-core/src/gen/schedule.ts` generates the regular season:
-- 8 teams.
-- 14 matchdays.
-- 4 fixtures per matchday.
+- Any even number of teams (12 by default).
+- 22 matchdays.
+- 6 fixtures per matchday.
 - Season-aware fixture IDs.
 
 `packages/game-core/src/gen/playoffs.ts` creates the playoff bracket:
@@ -56,6 +62,11 @@ flowchart LR
 - Creates final after semifinals.
 - Moves to season review after the final.
 - Starts a new season while preserving teams/players.
+
+`packages/game-core/src/loop/offseason.ts` runs during the season rollover:
+- Ages every player by one year.
+- Develops young players toward their potential and declines older players, with the decline accelerating each year toward retirement.
+- Retires aging players (chance starts at age 30 and rises every year, certain by 39) and replaces them with fresh young prospects in the same role.
 
 `packages/game-core/src/loop/selectors.ts` provides read helpers:
 - `getStandings()`

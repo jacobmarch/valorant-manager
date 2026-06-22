@@ -9,7 +9,7 @@ interface GameStore {
   screen: Screen;
   lastAdvancedResults: MatchResult[];
   setScreen: (screen: Screen) => void;
-  createGame: (managerName: string, teamId?: TeamId) => void;
+  createGame: (managerName: string, teamId?: TeamId, seed?: string) => void;
   advanceDay: () => void;
   exportSave: () => string;
   importSave: (serialized: string) => void;
@@ -28,7 +28,7 @@ export const useGameStore = create<GameStore>()(
       screen: 'dashboard',
       lastAdvancedResults: [],
       setScreen: (screen) => set({ screen }),
-      createGame: (managerName, teamId) => set({ game: createNewGame({ managerName, userTeamId: teamId }), screen: 'dashboard', lastAdvancedResults: [] }),
+      createGame: (managerName, teamId, seed) => set({ game: createNewGame({ managerName, userTeamId: teamId, seed }), screen: 'dashboard', lastAdvancedResults: [] }),
       advanceDay: () => {
         const game = get().game;
         if (!game) {

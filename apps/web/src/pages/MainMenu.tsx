@@ -1,11 +1,14 @@
 import { createSampleTeams } from '@valorant-manager/game-core';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { getTeamOverall } from '../lib/stats';
 import { Button, Eyebrow } from '../components/ui';
 
 export function MainMenu() {
-  const teams = createSampleTeams();
+  // Generate the league once on load so switching teams doesn't reshuffle the
+  // rosters. The same seed is handed to createGame so the career uses this league.
+  const [seed] = useState(() => `${Date.now()}-${Math.random()}`);
+  const teams = useMemo(() => createSampleTeams(seed), [seed]);
   const [selectedTeamId, setSelectedTeamId] = useState(teams[0].id);
   const [managerName, setManagerName] = useState('Alex Carter');
   const createGame = useGameStore((state) => state.createGame);
@@ -46,7 +49,7 @@ export function MainMenu() {
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-xs text-faint">{team.city}</p>
+                      <p className="text-xs text-faint">{team.region}</p>
                       <h2 className="text-lg font-black leading-tight">{team.name}</h2>
                     </div>
                     <div className="rounded-lg bg-surface-3 px-2 py-1 text-center">
@@ -62,7 +65,7 @@ export function MainMenu() {
         </div>
 
         {hasSave && <p className="mt-4 text-sm text-faint">A previous save exists and will be replaced if you start a new career.</p>}
-        <Button className="mt-8 px-6 py-3" onClick={() => createGame(managerName, selectedTeamId)}>
+        <Button className="mt-8 px-6 py-3" onClick={() => createGame(managerName, selectedTeamId, seed)}>
           Start Career
         </Button>
       </section>

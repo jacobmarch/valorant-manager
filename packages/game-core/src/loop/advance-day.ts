@@ -2,6 +2,7 @@ import type { GameState, MatchResult, SeasonSummary, Team } from '../types/model
 import { createFinalFixture, createPlayoffBracket, createSemifinalFixtures } from '../gen/playoffs';
 import { createDoubleRoundRobinSchedule } from '../gen/schedule';
 import { simulateMatch } from '../sim/match';
+import { runOffseason } from './offseason';
 import { getStandings } from './selectors';
 
 function clamp(value: number, min: number, max: number): number {
@@ -135,7 +136,9 @@ function resetTeamForNewSeason(team: Team): Team {
 
 function startNextSeason(state: GameState): GameState {
   const seasonYear = state.seasonYear + 1;
-  const teams = state.teams.map(resetTeamForNewSeason);
+  // Off-season: age players, develop/decline skills, retire and replace.
+  const agedTeams = runOffseason(state.teams, seasonYear, `${state.createdAt}-offseason-${seasonYear}`);
+  const teams = agedTeams.map(resetTeamForNewSeason);
 
   return {
     ...state,

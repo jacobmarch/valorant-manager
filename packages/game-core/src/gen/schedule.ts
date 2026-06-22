@@ -1,8 +1,8 @@
 import type { Fixture, Team } from '../types/models';
 
 export function createDoubleRoundRobinSchedule(teams: Team[], seasonYear = 1, startDay = 1): Fixture[] {
-  if (teams.length !== 8) {
-    throw new Error('Sample league requires exactly 8 teams.');
+  if (teams.length < 2 || teams.length % 2 !== 0) {
+    throw new Error('League requires an even number of teams.');
   }
 
   const teamIds = teams.map((team) => team.id);

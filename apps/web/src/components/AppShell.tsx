@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${userTeam.colors.primary}, ${userTeam.colors.secondary})` }} />
               <div className="p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-faint">{userTeam.city}</p>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-faint">{userTeam.region}</p>
                   <Pill tone={phaseTone(game.seasonPhase)}>{phaseLabel}</Pill>
                 </div>
                 <p className="mt-1 text-lg font-black leading-tight">{userTeam.name}</p>

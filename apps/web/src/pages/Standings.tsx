@@ -65,7 +65,7 @@ export function Standings() {
                         <span className="h-7 w-1 rounded-full" style={{ background: `linear-gradient(${team?.colors.primary}, ${team?.colors.secondary})` }} />
                         <div>
                           <p className={`font-bold ${isUser ? 'text-valorant-bright' : 'text-ink'}`}>{team?.name}</p>
-                          <p className="text-xs text-faint">{team?.city}</p>
+                          <p className="text-xs text-faint">{team?.region}</p>
                         </div>
                       </div>
                     </td>

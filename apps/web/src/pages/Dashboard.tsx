@@ -120,7 +120,7 @@ export function Dashboard() {
               </Eyebrow>
               <h1 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">{userTeam.name}</h1>
               <p className="mt-1 text-sm text-muted">
-                League rank <span className="font-bold text-ink">#{userRank}</span> of {game.standings.length} · {userTeam.city}
+                League rank <span className="font-bold text-ink">#{userRank}</span> of {game.standings.length} · {userTeam.region}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button onClick={advanceDay}>{advanceLabel}</Button>
