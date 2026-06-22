@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { GameState, MatchResult, PlayerMatchStat } from '@valorant-manager/game-core';
 import { teamName } from '../lib/stats';
-import { Pill } from './ui';
+import { Eyebrow, Modal, Pill, TeamSpine } from './ui';
+import { useDrilldown } from './Drilldown';
 
 function resultLabel(result: MatchResult) {
   if (result.fixtureType === 'playoff') {
@@ -14,17 +15,8 @@ function resultLabel(result: MatchResult) {
 const ALL_MAPS = -1;
 
 export function BoxScoreModal({ game, result, onClose }: { game: GameState; result: MatchResult; onClose: () => void }) {
+  const { openPlayer, openTeam } = useDrilldown();
   const [tab, setTab] = useState<number>(ALL_MAPS);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const playersById = new Map(game.teams.flatMap((team) => team.players).map((player) => [player.id, player]));
   const teamsById = new Map(game.teams.map((team) => [team.id, team]));
@@ -62,17 +54,19 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
     const sorted = [...stats].sort((a, b) => b.acs - a.acs);
 
     return (
-      <div className={`rounded-xl border ${isUserTeam ? 'border-valorant/30' : 'border-line'} bg-surface-2`}>
+      <div className={`overflow-hidden rounded-md border ${isUserTeam ? 'border-border-strong' : 'border-line'} bg-surface-2`}>
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span
-              className="h-5 w-1.5 rounded-full"
-              style={{ background: team ? `linear-gradient(${team.colors.primary}, ${team.colors.secondary})` : undefined }}
-            />
-            <span className="font-black">{teamName(game, teamId)}</span>
+          <button
+            type="button"
+            onClick={() => openTeam(teamId)}
+            title="View team"
+            className="flex items-center gap-2 text-left transition-colors hover:text-valorant-bright"
+          >
+            <TeamSpine colors={team?.colors} className="h-5 w-1.5" />
+            <span className="font-display font-bold">{teamName(game, teamId)}</span>
             {isWinner(teamId) && <Pill tone="positive">Win</Pill>}
-          </div>
-          <span className="tnum text-2xl font-black">{teamScore(teamId)}</span>
+          </button>
+          <span className="font-display tnum text-2xl font-bold">{teamScore(teamId)}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[380px] text-sm tnum">
@@ -89,12 +83,20 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
               {sorted.map((stat) => {
                 const player = playersById.get(stat.playerId);
                 return (
-                  <tr key={stat.playerId} className="border-t border-line">
-                    <td className="px-4 py-2 font-bold">{player?.handle ?? 'Unknown'}</td>
+                  <tr
+                    key={stat.playerId}
+                    onClick={player ? () => openPlayer(stat.playerId) : undefined}
+                    role={player ? 'button' : undefined}
+                    title={player ? 'View player' : undefined}
+                    className={`border-t border-line ${player ? 'cursor-pointer transition-colors hover:bg-surface-3' : ''}`}
+                  >
+                    <td className="px-4 py-2 font-semibold">
+                      <span className="border-b border-dotted border-faint/40">{player?.handle ?? 'Unknown'}</span>
+                    </td>
                     <td className="py-2 text-center">{stat.kills}</td>
                     <td className="py-2 text-center">{stat.deaths}</td>
                     <td className="py-2 text-center">{stat.assists}</td>
-                    <td className="px-4 py-2 text-right font-black text-valorant-bright">{stat.acs}</td>
+                    <td className="px-4 py-2 text-right font-bold text-valorant-bright">{stat.acs}</td>
                   </tr>
                 );
               })}
@@ -106,63 +108,51 @@ export function BoxScoreModal({ game, result, onClose }: { game: GameState; resu
   };
 
   const tabClass = (active: boolean) =>
-    `shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+    `shrink-0 rounded px-3 py-1.5 text-xs font-semibold transition-colors ${
       active ? 'bg-valorant text-white' : 'bg-surface-2 text-muted hover:text-ink'
     }`;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:items-center"
-      onClick={onClose}
+    <Modal
+      onClose={onClose}
+      eyebrow={<Pill tone={result.fixtureType === 'playoff' ? 'gold' : 'neutral'}>{resultLabel(result)}</Pill>}
+      title={
+        <span className="tnum">
+          {teamName(game, result.homeTeamId)} <span className="text-faint">{homeMaps} – {awayMaps}</span> {teamName(game, result.awayTeamId)}
+        </span>
+      }
     >
-      <div
-        className="my-auto w-full max-w-2xl rounded-2xl border border-border bg-surface shadow-2xl"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 border-b border-line p-5">
-          <div>
-            <Pill tone={result.fixtureType === 'playoff' ? 'gold' : 'neutral'}>{resultLabel(result)}</Pill>
-            <h2 className="mt-2 tnum text-xl font-black">
-              {teamName(game, result.homeTeamId)} <span className="text-faint">{homeMaps} – {awayMaps}</span> {teamName(game, result.awayTeamId)}
-            </h2>
-            <p className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-faint">
-              <span>Day {result.day}</span>
-              {maps.map((map, index) => (
-                <span key={index} className="tnum">
-                  · Map {index + 1} {map.homeRounds}-{map.awayRounds}
-                </span>
-              ))}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 rounded-lg px-2.5 py-1 text-lg font-bold text-muted transition hover:bg-surface-3 hover:text-ink"
-            aria-label="Close box score"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto border-b border-line px-5 py-3">
-          <button type="button" className={tabClass(tab === ALL_MAPS)} onClick={() => setTab(ALL_MAPS)}>
-            All Maps
-          </button>
-          {maps.map((map, index) => (
-            <button key={index} type="button" className={tabClass(tab === index)} onClick={() => setTab(index)}>
-              Map {index + 1}
-              <span className="ml-1.5 tnum text-faint">{map.homeRounds}-{map.awayRounds}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-4 p-5">
-          {tab === ALL_MAPS && result.summary && <p className="text-sm text-muted">{result.summary}</p>}
-          {orderedTeamIds.map((teamId) => (
-            <TeamBoxScore key={teamId} teamId={teamId} stats={boxScore.filter((stat) => stat.teamId === teamId)} />
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-b border-line px-5 py-2 text-xs text-faint">
+        <span>Day {result.day}</span>
+        {maps.map((map, index) => (
+          <span key={index} className="tnum">
+            · Map {index + 1} {map.homeRounds}-{map.awayRounds}
+          </span>
+        ))}
       </div>
-    </div>
+
+      <div className="flex gap-2 overflow-x-auto border-b border-line px-5 py-3">
+        <button type="button" className={tabClass(tab === ALL_MAPS)} onClick={() => setTab(ALL_MAPS)}>
+          All Maps
+        </button>
+        {maps.map((map, index) => (
+          <button key={index} type="button" className={tabClass(tab === index)} onClick={() => setTab(index)}>
+            Map {index + 1}
+            <span className="ml-1.5 tnum text-faint">{map.homeRounds}-{map.awayRounds}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4 p-5">
+        {tab === ALL_MAPS && result.summary && <p className="text-sm text-muted">{result.summary}</p>}
+        <div className="flex items-center gap-2">
+          <Eyebrow>Box score</Eyebrow>
+          <span className="text-[0.65rem] text-faint">— tap a player or team to dive in</span>
+        </div>
+        {orderedTeamIds.map((teamId) => (
+          <TeamBoxScore key={teamId} teamId={teamId} stats={boxScore.filter((stat) => stat.teamId === teamId)} />
+        ))}
+      </div>
+    </Modal>
   );
 }

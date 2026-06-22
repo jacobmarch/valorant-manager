@@ -1,20 +1,22 @@
 import { useGameStore } from '../store/useGameStore';
 import { getTeamForm } from '../lib/stats';
-import { Card, Diff, Eyebrow, FormStreak, PanelHeader } from '../components/ui';
+import { Card, Diff, Eyebrow, FormStreak, PanelHeader, TeamSpine } from '../components/ui';
 import { PlayoffBracket } from '../components/PlayoffBracket';
+import { useDrilldown } from '../components/Drilldown';
 
 const PLAYOFF_CUTOFF = 4;
 
 export function Standings() {
   const game = useGameStore((state) => state.game)!;
   const setScreen = useGameStore((state) => state.setScreen);
+  const { openTeam } = useDrilldown();
   const teamsById = new Map(game.teams.map((team) => [team.id, team]));
 
   return (
     <section className="space-y-6">
       <div>
         <Eyebrow>League Table</Eyebrow>
-        <h1 className="mt-2 text-3xl font-black tracking-tight">Season {game.seasonYear} Standings</h1>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Season {game.seasonYear} Standings</h1>
         <p className="mt-1 text-sm text-muted">Ranked by map differential, then round differential. Top {PLAYOFF_CUTOFF} qualify for playoffs.</p>
       </div>
 
@@ -53,18 +55,22 @@ export function Standings() {
                 return (
                   <tr
                     key={row.teamId}
-                    className={`border-b border-line ${playoffLine ? 'border-b-2 border-b-gold/40' : ''} ${
-                      isUser ? 'bg-valorant/10' : 'hover:bg-surface-2'
+                    onClick={() => openTeam(row.teamId)}
+                    role="button"
+                    title="View team"
+                    style={isUser ? { borderLeftColor: team?.colors.primary } : undefined}
+                    className={`cursor-pointer border-b border-line ${playoffLine ? 'border-b-2 border-b-gold/40' : ''} ${
+                      isUser ? 'border-l-2 bg-surface-2' : 'hover:bg-surface-2'
                     }`}
                   >
                     <td className="px-4 py-3">
-                      <span className={`font-black ${rank <= PLAYOFF_CUTOFF ? 'text-gold' : 'text-faint'}`}>{rank}</span>
+                      <span className={`font-display font-bold ${rank <= PLAYOFF_CUTOFF ? 'text-gold' : 'text-faint'}`}>{rank}</span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="h-7 w-1 rounded-full" style={{ background: `linear-gradient(${team?.colors.primary}, ${team?.colors.secondary})` }} />
+                        <TeamSpine colors={team?.colors} className="h-7 w-1" />
                         <div>
-                          <p className={`font-bold ${isUser ? 'text-valorant-bright' : 'text-ink'}`}>{team?.name}</p>
+                          <p className="font-semibold text-ink">{team?.name}</p>
                           <p className="text-xs text-faint">{team?.region}</p>
                         </div>
                       </div>

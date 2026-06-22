@@ -1,4 +1,5 @@
 import { AppShell } from './components/AppShell';
+import { DrilldownProvider } from './components/Drilldown';
 import { AroundLeague } from './pages/AroundLeague';
 import { Dashboard } from './pages/Dashboard';
 import { MainMenu } from './pages/MainMenu';
@@ -19,15 +20,17 @@ export default function App() {
   }
 
   return (
-    <AppShell>
-      {screen === 'dashboard' && <Dashboard />}
-      {screen === 'roster' && <Roster />}
-      {screen === 'schedule' && <Schedule />}
-      {screen === 'standings' && <Standings />}
-      {screen === 'match' && <MatchScreen />}
-      {screen === 'aroundLeague' && <AroundLeague />}
-      {screen === 'history' && <MatchHistory />}
-      {screen === 'saves' && <SaveLoad />}
-    </AppShell>
+    <DrilldownProvider>
+      <AppShell>
+        {screen === 'dashboard' && <Dashboard />}
+        {screen === 'roster' && <Roster />}
+        {screen === 'schedule' && <Schedule />}
+        {screen === 'standings' && <Standings />}
+        {screen === 'match' && <MatchScreen />}
+        {screen === 'aroundLeague' && <AroundLeague />}
+        {screen === 'history' && <MatchHistory />}
+        {screen === 'saves' && <SaveLoad />}
+      </AppShell>
+    </DrilldownProvider>
   );
 }

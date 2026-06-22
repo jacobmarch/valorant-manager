@@ -1,14 +1,13 @@
-import { useState } from 'react';
-import type { Fixture, MatchResult } from '@valorant-manager/game-core';
+import type { Fixture } from '@valorant-manager/game-core';
 import { useGameStore } from '../store/useGameStore';
 import { teamName } from '../lib/stats';
 import { Card, Eyebrow, Pill } from '../components/ui';
 import { PlayoffBracket } from '../components/PlayoffBracket';
-import { BoxScoreModal } from '../components/BoxScoreModal';
+import { useDrilldown } from '../components/Drilldown';
 
 export function Schedule() {
   const game = useGameStore((state) => state.game)!;
-  const [openResult, setOpenResult] = useState<MatchResult | null>(null);
+  const { openResult } = useDrilldown();
   const involvesUser = (fixture: Fixture) => fixture.homeTeamId === game.userTeamId || fixture.awayTeamId === game.userTeamId;
 
   const nextFixtureId = game.schedule.find(
@@ -43,16 +42,16 @@ export function Schedule() {
     return (
       <div
         key={fixture.id}
-        onClick={hasBoxScore ? () => setOpenResult(fixture.result!) : undefined}
+        onClick={hasBoxScore ? () => openResult(fixture.result!) : undefined}
         role={hasBoxScore ? 'button' : undefined}
         title={hasBoxScore ? 'View box score' : undefined}
-        className={`flex items-center gap-4 rounded-xl border px-4 py-3 ${
-          isNext ? 'border-valorant/50 bg-valorant/10' : 'border-line bg-surface-2'
-        } ${hasBoxScore ? 'cursor-pointer transition hover:border-valorant/40 hover:bg-surface-3' : ''}`}
+        className={`flex items-center gap-4 rounded-md border px-4 py-3 ${
+          isNext ? 'border-border-strong bg-surface-3' : 'border-line bg-surface-2'
+        } ${hasBoxScore ? 'cursor-pointer transition hover:border-border-strong hover:bg-surface-3' : ''}`}
       >
-        <div className="flex h-10 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-surface-3">
+        <div className="flex h-10 w-14 shrink-0 flex-col items-center justify-center rounded-md bg-surface-3">
           <span className="text-[0.55rem] font-semibold uppercase tracking-wider text-faint">Week</span>
-          <span className="tnum text-base font-black leading-none">{fixture.matchday}</span>
+          <span className="font-display tnum text-base font-bold leading-none">{fixture.matchday}</span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">
@@ -63,7 +62,7 @@ export function Schedule() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isNext && <Pill tone="accent">Next</Pill>}
-          <span className={`tnum text-sm font-black ${statusColor}`}>{status.text}</span>
+          <span className={`tnum text-sm font-bold ${statusColor}`}>{status.text}</span>
         </div>
       </div>
     );
@@ -73,12 +72,12 @@ export function Schedule() {
     <section className="space-y-6">
       <div>
         <Eyebrow>Season {game.seasonYear}</Eyebrow>
-        <h1 className="mt-2 text-3xl font-black tracking-tight">My Schedule</h1>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">My Schedule</h1>
         <p className="mt-1 text-sm text-muted">Your team plays one game per week through the regular season, then the playoffs.</p>
       </div>
 
       <Card className="p-5">
-        <h2 className="text-sm font-black uppercase tracking-wider text-muted">Regular Season</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-muted">Regular Season</h2>
         {userFixtures.length === 0 ? (
           <p className="mt-3 text-sm text-faint">No regular season games scheduled.</p>
         ) : (
@@ -87,17 +86,15 @@ export function Schedule() {
       </Card>
 
       <Card className="p-5">
-        <h2 className="text-sm font-black uppercase tracking-wider text-muted">Playoffs</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider text-muted">Playoffs</h2>
         {playoffFixtures.length === 0 ? (
           <p className="mt-3 text-sm text-faint">The playoff bracket appears after the regular season ends.</p>
         ) : (
           <div className="mt-4">
-            <PlayoffBracket game={game} onSelectResult={setOpenResult} />
+            <PlayoffBracket game={game} />
           </div>
         )}
       </Card>
-
-      {openResult && <BoxScoreModal game={game} result={openResult} onClose={() => setOpenResult(null)} />}
     </section>
   );
 }

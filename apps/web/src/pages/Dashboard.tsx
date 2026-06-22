@@ -8,7 +8,6 @@ import {
   type MatchResult,
   type StandingsRow
 } from '@valorant-manager/game-core';
-import { useState } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import {
   getPlayerOverall,
@@ -20,9 +19,9 @@ import {
   teamName,
   teamShort
 } from '../lib/stats';
-import { Button, Card, Diff, Eyebrow, FormStreak, PanelHeader, Pill, StatTile } from '../components/ui';
+import { Button, Card, Diff, Eyebrow, FormStreak, PanelHeader, Pill, StatTile, TeamSpine } from '../components/ui';
 import { PlayoffBracket } from '../components/PlayoffBracket';
-import { BoxScoreModal } from '../components/BoxScoreModal';
+import { useDrilldown } from '../components/Drilldown';
 
 function standingOf(game: GameState, teamId: string): StandingsRow | undefined {
   return game.standings.find((row) => row.teamId === teamId);
@@ -47,21 +46,30 @@ function resultLabel(result: MatchResult): string {
 }
 
 function TeamBadge({ game, teamId, align = 'left' }: { game: GameState; teamId: string; align?: 'left' | 'right' }) {
+  const { openTeam } = useDrilldown();
   const team = teamById(game, teamId);
   const standing = standingOf(game, teamId);
   return (
-    <div className={`flex flex-col gap-2 ${align === 'right' ? 'items-end text-right' : 'items-start'}`}>
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        openTeam(teamId);
+      }}
+      title="View team"
+      className={`flex flex-col gap-2 rounded-md p-1 transition-colors hover:bg-surface-3 ${align === 'right' ? 'items-end text-right' : 'items-start'}`}
+    >
       <div className={`flex items-center gap-2 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
-        <span className="h-9 w-1.5 rounded-full" style={{ background: `linear-gradient(${team?.colors.primary}, ${team?.colors.secondary})` }} />
+        <TeamSpine colors={team?.colors} className="h-9 w-1.5" />
         <div>
-          <p className="text-lg font-black leading-tight">{team?.name}</p>
+          <p className="font-display text-lg font-bold leading-tight">{team?.name}</p>
           <p className="tnum text-xs text-muted">
             {standing?.wins ?? 0}-{standing?.losses ?? 0} · {getTeamOverall(team!)} OVR
           </p>
         </div>
       </div>
       <FormStreak form={getTeamForm(game, teamId, 5)} />
-    </div>
+    </button>
   );
 }
 
@@ -69,7 +77,7 @@ export function Dashboard() {
   const game = useGameStore((state) => state.game)!;
   const advanceDay = useGameStore((state) => state.advanceDay);
   const setScreen = useGameStore((state) => state.setScreen);
-  const [openResult, setOpenResult] = useState<MatchResult | null>(null);
+  const { openResult, openPlayer, openTeam } = useDrilldown();
 
   const userTeam = teamById(game, game.userTeamId)!;
   const userStanding = standingOf(game, game.userTeamId);
@@ -110,7 +118,7 @@ export function Dashboard() {
   return (
     <section className="space-y-6">
       {/* Hero */}
-      <Card className="overflow-hidden p-0">
+      <Card className="clip-corner overflow-hidden p-0">
         <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${userTeam.colors.primary}, ${userTeam.colors.secondary})` }} />
         <div className="p-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
@@ -118,7 +126,7 @@ export function Dashboard() {
               <Eyebrow>
                 Season {game.seasonYear} · {phaseLabel} · Day {game.currentDay}
               </Eyebrow>
-              <h1 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">{userTeam.name}</h1>
+              <h1 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">{userTeam.name}</h1>
               <p className="mt-1 text-sm text-muted">
                 League rank <span className="font-bold text-ink">#{userRank}</span> of {game.standings.length} · {userTeam.region}
               </p>
@@ -138,10 +146,10 @@ export function Dashboard() {
           </div>
 
           {game.seasonPhase === 'seasonReview' && championTeam && (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-gold/10 p-4">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/30 bg-gold/10 p-4">
               <div>
                 <Pill tone="gold">Season {game.seasonYear} Champion</Pill>
-                <p className="mt-1.5 text-xl font-black">{championTeam.name}</p>
+                <p className="mt-1.5 text-xl font-bold">{championTeam.name}</p>
               </div>
               <p className="max-w-md text-sm text-muted">Advance to archive the year, reset standings, regenerate the schedule, and begin next season.</p>
             </div>
@@ -154,9 +162,11 @@ export function Dashboard() {
         <Card className="p-5 xl:col-span-2">
           <PanelHeader title="Next Match" subtitle="Your upcoming fixture" action="Match Center" onAction={() => setScreen('match')} />
           {nextFixture && opponentId ? (
-            <button
+            <div
               onClick={() => setScreen('match')}
-              className="mt-4 block w-full rounded-2xl border border-line bg-surface-2 p-5 text-left transition hover:border-valorant/50"
+              role="button"
+              title="Open Match Center"
+              className="mt-4 block w-full cursor-pointer rounded-lg border border-line bg-surface-2 p-5 text-left transition hover:border-border-strong"
             >
               <div className="mb-4 flex items-center justify-center gap-2">
                 <Pill tone="accent">{fixtureLabel(nextFixture)}</Pill>
@@ -165,13 +175,13 @@ export function Dashboard() {
               <div className="flex items-center justify-between gap-4">
                 <TeamBadge game={game} teamId={game.userTeamId} />
                 <div className="text-center">
-                  <p className="text-2xl font-black text-faint">VS</p>
+                  <p className="font-display text-2xl font-bold text-faint">VS</p>
                 </div>
                 <TeamBadge game={game} teamId={opponentId} align="right" />
               </div>
-            </button>
+            </div>
           ) : (
-            <p className="mt-4 rounded-2xl border border-line bg-surface-2 p-5 text-sm text-muted">
+            <p className="mt-4 rounded-lg border border-line bg-surface-2 p-5 text-sm text-muted">
               No upcoming user fixture. {game.seasonPhase === 'seasonReview' ? 'Advance the day to start next season.' : 'Advance the day to continue.'}
             </p>
           )}
@@ -180,12 +190,12 @@ export function Dashboard() {
             <div className="mt-4">
               <PanelHeader title="Last Result" subtitle={`${resultLabel(lastResult)} · Day ${lastResult.day}`} action="History" onAction={() => setScreen('history')} />
               <button
-                onClick={() => setOpenResult(lastResult)}
-                className="mt-3 flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3 text-left transition hover:border-valorant/50 hover:bg-surface-3"
+                onClick={() => openResult(lastResult)}
+                className="mt-3 flex w-full flex-wrap items-center justify-between gap-3 rounded-md border border-line bg-surface-2 px-4 py-3 text-left transition hover:border-border-strong hover:bg-surface-3"
               >
                 <div className="flex items-center gap-3">
                   <Pill tone={lastWin ? 'positive' : 'negative'}>{lastWin ? 'Win' : 'Loss'}</Pill>
-                  <p className="tnum text-lg font-black">
+                  <p className="tnum text-lg font-bold">
                     {teamShort(game, lastResult.homeTeamId)} {lastResult.homeMaps}
                     <span className="text-faint"> – </span>
                     {lastResult.awayMaps} {teamShort(game, lastResult.awayTeamId)}
@@ -205,13 +215,17 @@ export function Dashboard() {
               return (
                 <div
                   key={row.teamId}
-                  className={`grid grid-cols-[1.5rem_1fr_auto] items-center gap-2 rounded-xl px-3 py-2 ${
-                    isUser ? 'bg-valorant/15 ring-1 ring-valorant/30' : 'bg-surface-2'
+                  onClick={() => openTeam(row.teamId)}
+                  role="button"
+                  title="View team"
+                  style={isUser ? { borderColor: userTeam.colors.primary } : undefined}
+                  className={`grid cursor-pointer grid-cols-[1.5rem_1fr_auto] items-center gap-2 rounded-md px-3 py-2 transition-colors ${
+                    isUser ? 'border-l-2 bg-surface-3' : 'bg-surface-2 hover:bg-surface-3'
                   }`}
                 >
-                  <span className={`tnum text-sm font-black ${index < 4 ? 'text-gold' : 'text-faint'}`}>{index + 1}</span>
+                  <span className={`tnum text-sm font-bold ${index < 4 ? 'text-gold' : 'text-faint'}`}>{index + 1}</span>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold">{teamName(game, row.teamId)}</p>
+                    <p className="truncate text-sm font-semibold">{teamName(game, row.teamId)}</p>
                     <p className="tnum text-xs text-faint">
                       {row.wins}-{row.losses}
                     </p>
@@ -221,10 +235,16 @@ export function Dashboard() {
               );
             })}
             {!userInPreview && userStanding && (
-              <div className="grid grid-cols-[1.5rem_1fr_auto] items-center gap-2 rounded-xl bg-valorant/15 px-3 py-2 ring-1 ring-valorant/30">
-                <span className="tnum text-sm font-black text-faint">{userRank}</span>
+              <div
+                onClick={() => openTeam(game.userTeamId)}
+                role="button"
+                title="View team"
+                style={{ borderColor: userTeam.colors.primary }}
+                className="grid cursor-pointer grid-cols-[1.5rem_1fr_auto] items-center gap-2 rounded-md border-l-2 bg-surface-3 px-3 py-2"
+              >
+                <span className="tnum text-sm font-bold text-faint">{userRank}</span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{userTeam.name}</p>
+                  <p className="truncate text-sm font-semibold">{userTeam.name}</p>
                   <p className="tnum text-xs text-faint">
                     {userStanding.wins}-{userStanding.losses}
                   </p>
@@ -242,7 +262,7 @@ export function Dashboard() {
         <Card className="p-5">
           <PanelHeader title="Playoff Bracket" subtitle={`Season ${game.seasonYear} postseason`} action="Schedule" onAction={() => setScreen('schedule')} />
           <div className="mt-4">
-            <PlayoffBracket game={game} onSelectResult={setOpenResult} />
+            <PlayoffBracket game={game} />
           </div>
         </Card>
       )}
@@ -262,12 +282,12 @@ export function Dashboard() {
             return (
               <div
                 key={fixture.id}
-                onClick={hasBoxScore ? () => setOpenResult(fixture.result!) : undefined}
+                onClick={hasBoxScore ? () => openResult(fixture.result!) : undefined}
                 role={hasBoxScore ? 'button' : undefined}
                 title={hasBoxScore ? 'View box score' : undefined}
-                className={`min-w-[9.5rem] shrink-0 rounded-xl border p-3 ${
+                className={`min-w-[9.5rem] shrink-0 rounded-md border p-3 ${
                   isUpcomingNext ? 'border-valorant/50 bg-valorant/10' : 'border-line bg-surface-2'
-                } ${hasBoxScore ? 'cursor-pointer transition hover:border-valorant/40 hover:bg-surface-3' : ''}`}
+                } ${hasBoxScore ? 'cursor-pointer transition hover:border-border-strong hover:bg-surface-3' : ''}`}
               >
                 <p className="text-[0.65rem] uppercase tracking-wider text-faint">{fixtureLabel(fixture)} · D{fixture.day}</p>
                 <p className="mt-1 text-sm font-bold">
@@ -275,7 +295,7 @@ export function Dashboard() {
                 </p>
                 <div className="mt-2">
                   {outcome ? (
-                    <span className={`tnum text-sm font-black ${outcome === 'W' ? 'text-positive' : 'text-negative'}`}>
+                    <span className={`tnum text-sm font-bold ${outcome === 'W' ? 'text-positive' : 'text-negative'}`}>
                       {outcome} {fixture.result!.homeMaps}-{fixture.result!.awayMaps}
                     </span>
                   ) : isUpcomingNext ? (
@@ -294,7 +314,7 @@ export function Dashboard() {
       {/* Roster snapshot + around league */}
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="p-5 xl:col-span-2">
-          <PanelHeader title="Squad Performance" subtitle="Season averages, sorted by ACS" action="Full roster" onAction={() => setScreen('roster')} />
+          <PanelHeader title="Squad Performance" subtitle="Season averages — tap a player for their profile" action="Full roster" onAction={() => setScreen('roster')} />
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
               <thead>
@@ -309,18 +329,24 @@ export function Dashboard() {
               </thead>
               <tbody className="tnum">
                 {roster.map(({ player, stats }) => (
-                  <tr key={player.id} className="border-t border-line">
+                  <tr
+                    key={player.id}
+                    onClick={() => openPlayer(player.id)}
+                    role="button"
+                    title="View player"
+                    className="cursor-pointer border-t border-line transition-colors hover:bg-surface-2"
+                  >
                     <td className="py-2.5">
-                      <p className="font-bold">{player.handle}</p>
+                      <p className="font-semibold">{player.handle}</p>
                       <p className="text-[0.7rem] uppercase tracking-wider text-faint">{player.role}</p>
                     </td>
-                    <td className="py-2.5 text-center font-black">{getPlayerOverall(player)}</td>
+                    <td className="py-2.5 text-center font-display font-bold">{getPlayerOverall(player)}</td>
                     <td className="py-2.5 text-center text-muted">{stats.games}</td>
                     <td className="py-2.5 text-center text-muted">
                       {stats.kills.toFixed(1)}/{stats.deaths.toFixed(1)}/{stats.assists.toFixed(1)}
                     </td>
-                    <td className={`py-2.5 text-right font-bold ${stats.kd >= 1 ? 'text-positive' : 'text-negative'}`}>{stats.kd.toFixed(2)}</td>
-                    <td className="py-2.5 text-right font-black">{Math.round(stats.acs)}</td>
+                    <td className={`py-2.5 text-right font-semibold ${stats.kd >= 1 ? 'text-positive' : 'text-negative'}`}>{stats.kd.toFixed(2)}</td>
+                    <td className="py-2.5 text-right font-display font-bold">{Math.round(stats.acs)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -335,8 +361,8 @@ export function Dashboard() {
             {recentLeague.map((result) => (
               <button
                 key={result.id}
-                onClick={() => setOpenResult(result)}
-                className="block w-full rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-left transition hover:border-valorant/50 hover:bg-surface-3"
+                onClick={() => openResult(result)}
+                className="block w-full rounded-md border border-line bg-surface-2 px-3 py-2.5 text-left transition hover:border-border-strong hover:bg-surface-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="tnum text-sm font-bold">
@@ -350,8 +376,6 @@ export function Dashboard() {
           </div>
         </Card>
       </div>
-
-      {openResult && <BoxScoreModal game={game} result={openResult} onClose={() => setOpenResult(null)} />}
     </section>
   );
 }

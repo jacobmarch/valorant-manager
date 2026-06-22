@@ -73,6 +73,27 @@ export function getPlayerSeasonStats(game: GameState, playerId: string): PlayerS
   };
 }
 
+export interface PlayerMatchLogEntry {
+  result: MatchResult;
+  stat: PlayerMatchStat;
+  opponentId: string;
+  won: boolean;
+}
+
+/** Per-match stat lines for a player this season, newest first, with opponent + outcome context. */
+export function getPlayerMatchLog(game: GameState, playerId: string): PlayerMatchLogEntry[] {
+  return [...game.matchHistory]
+    .sort((a, b) => b.day - a.day || b.fixtureId.localeCompare(a.fixtureId))
+    .flatMap((result) => {
+      const stat = result.boxScore.find((entry) => entry.playerId === playerId);
+      if (!stat) {
+        return [];
+      }
+      const opponentId = stat.teamId === result.homeTeamId ? result.awayTeamId : result.homeTeamId;
+      return [{ result, stat, opponentId, won: result.winnerTeamId === stat.teamId }];
+    });
+}
+
 const OVERALL_KEYS: Array<keyof Player['attributes']> = ['aim', 'gameSense', 'utility', 'clutch', 'communication', 'consistency'];
 
 /** Composite skill rating from core performance attributes (excludes morale/fatigue/potential). */

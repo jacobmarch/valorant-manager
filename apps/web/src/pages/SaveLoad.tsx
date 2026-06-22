@@ -41,19 +41,19 @@ export function SaveLoad() {
     <section className="max-w-3xl space-y-6">
       <div>
         <Eyebrow>Save Data</Eyebrow>
-        <h1 className="mt-2 text-3xl font-black tracking-tight">Save / Load</h1>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">Save / Load</h1>
         <p className="mt-1 text-sm text-muted">Your career auto-saves to browser localStorage. Export a JSON backup or import one here.</p>
       </div>
 
       <Card className="p-6">
-        <p className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm text-muted">{message}</p>
+        <p className="rounded-md border border-line bg-surface-2 px-4 py-3 text-sm text-muted">{message}</p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Button onClick={handleExport}>Export JSON</Button>
           <Button variant="ghost" onClick={() => inputRef.current?.click()}>
             Import JSON
           </Button>
           <button
-            className="rounded-xl border border-negative/40 bg-negative/10 px-4 py-2.5 text-sm font-bold text-negative transition hover:bg-negative/20"
+            className="rounded-md border border-negative/40 bg-negative/10 px-4 py-2.5 text-sm font-bold text-negative transition hover:bg-negative/20"
             onClick={() => {
               deleteSave();
               setMessage('Save deleted. Start a new career from the main menu.');

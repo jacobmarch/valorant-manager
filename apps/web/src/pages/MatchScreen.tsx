@@ -1,15 +1,14 @@
-import { useState } from 'react';
-import { getNextUserFixture, type MatchResult } from '@valorant-manager/game-core';
+import { getNextUserFixture } from '@valorant-manager/game-core';
 import { useGameStore } from '../store/useGameStore';
 import { getTeamForm, getTeamOverall, teamById, teamName } from '../lib/stats';
-import { Button, Card, Eyebrow, FormStreak, Pill } from '../components/ui';
-import { BoxScoreModal } from '../components/BoxScoreModal';
+import { Button, Card, Eyebrow, FormStreak, Pill, TeamSpine } from '../components/ui';
+import { useDrilldown } from '../components/Drilldown';
 
 export function MatchScreen() {
   const game = useGameStore((state) => state.game)!;
   const advanceDay = useGameStore((state) => state.advanceDay);
   const setScreen = useGameStore((state) => state.setScreen);
-  const [openResult, setOpenResult] = useState<MatchResult | null>(null);
+  const { openResult, openTeam } = useDrilldown();
   const fixture = getNextUserFixture(game);
   const teamsById = new Map(game.teams.map((team) => [team.id, team]));
   const isToday = fixture?.day === game.currentDay;
@@ -21,7 +20,7 @@ export function MatchScreen() {
     return (
       <Card className="p-6">
         <Eyebrow>Match Center</Eyebrow>
-        <h1 className="mt-2 text-3xl font-black tracking-tight">{game.seasonPhase === 'seasonReview' ? 'Season Review' : 'No Upcoming Match'}</h1>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{game.seasonPhase === 'seasonReview' ? 'Season Review' : 'No Upcoming Match'}</h1>
         {game.seasonPhase === 'seasonReview' && championTeam ? (
           <>
             <p className="mt-3 text-muted">
@@ -49,21 +48,26 @@ export function MatchScreen() {
     const team = teamById(game, teamId)!;
     const standing = game.standings.find((row) => row.teamId === teamId);
     return (
-      <div className="flex flex-1 flex-col items-center gap-2 text-center">
-        <span className="h-10 w-1.5 rounded-full" style={{ background: `linear-gradient(${team.colors.primary}, ${team.colors.secondary})` }} />
-        <p className="text-lg font-black leading-tight">{team.name}</p>
+      <button
+        type="button"
+        onClick={() => openTeam(teamId)}
+        title="View team"
+        className="flex flex-1 flex-col items-center gap-2 rounded-md p-2 text-center transition-colors hover:bg-surface-2"
+      >
+        <TeamSpine colors={team.colors} className="h-10 w-1.5" />
+        <p className="font-display text-lg font-bold leading-tight">{team.name}</p>
         <p className="tnum text-sm text-muted">
           {standing?.wins ?? 0}-{standing?.losses ?? 0} · {getTeamOverall(team)} OVR
         </p>
         <FormStreak form={getTeamForm(game, teamId, 5)} />
-      </div>
+      </button>
     );
   };
 
   return (
     <section className="space-y-6">
-      <Card className="overflow-hidden p-0">
-        <div className="h-1.5 bg-gradient-to-r from-valorant to-valorant-bright" />
+      <Card className="clip-corner overflow-hidden p-0">
+        <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${home.colors.primary}, ${home.colors.secondary} 45%, ${away.colors.secondary} 55%, ${away.colors.primary})` }} />
         <div className="p-6">
           <div className="flex items-center justify-center gap-2">
             <Eyebrow>Match Center</Eyebrow>
@@ -72,7 +76,7 @@ export function MatchScreen() {
             <TeamColumn teamId={home.id} />
             <div className="flex flex-col items-center">
               <Pill tone="accent">{fixtureLabel}</Pill>
-              <p className="mt-2 text-2xl font-black text-faint">VS</p>
+              <p className="mt-2 font-display text-2xl font-bold text-faint">VS</p>
               <p className="text-xs text-faint">Day {fixture.day}</p>
             </div>
             <TeamColumn teamId={away.id} />
@@ -97,7 +101,7 @@ export function MatchScreen() {
 
       {/* Pre-match comparison */}
       <Card className="p-5">
-        <h2 className="text-base font-black">Tale of the Tape</h2>
+        <h2 className="font-display text-base font-bold">Tale of the Tape</h2>
         <div className="mt-4 space-y-2 tnum">
           {[
             { label: 'Record', h: `${homeStanding?.wins ?? 0}-${homeStanding?.losses ?? 0}`, a: `${awayStanding?.wins ?? 0}-${awayStanding?.losses ?? 0}` },
@@ -116,7 +120,7 @@ export function MatchScreen() {
 
       <Card className="p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-black">Last Time Out</h2>
+          <h2 className="font-display text-base font-bold">Last Time Out</h2>
           <span className="text-xs text-faint">Tap a result for the full box score</span>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -125,7 +129,7 @@ export function MatchScreen() {
             const team = teamById(game, teamId)!;
             if (!result) {
               return (
-                <div key={teamId} className="rounded-xl border border-line bg-surface-2 p-4">
+                <div key={teamId} className="rounded-md border border-line bg-surface-2 p-4">
                   <p className="font-bold">{team.name}</p>
                   <p className="mt-1 text-sm text-faint">No matches played yet.</p>
                 </div>
@@ -145,15 +149,15 @@ export function MatchScreen() {
             return (
               <button
                 key={teamId}
-                onClick={() => setOpenResult(result)}
-                className="flex flex-col gap-2 rounded-xl border border-line bg-surface-2 p-4 text-left transition hover:border-valorant/50 hover:bg-surface-3"
+                onClick={() => openResult(result)}
+                className="flex flex-col gap-2 rounded-md border border-line bg-surface-2 p-4 text-left transition hover:border-border-strong hover:bg-surface-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-bold">{team.name}</span>
                   <Pill tone={won ? 'positive' : 'negative'}>{won ? 'W' : 'L'}</Pill>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="tnum text-2xl font-black">
+                  <span className="tnum text-2xl font-bold">
                     {teamMaps}-{oppMaps}
                   </span>
                   <span className="truncate text-sm text-muted">
@@ -171,8 +175,6 @@ export function MatchScreen() {
           })}
         </div>
       </Card>
-
-      {openResult && <BoxScoreModal game={game} result={openResult} onClose={() => setOpenResult(null)} />}
     </section>
   );
 }
